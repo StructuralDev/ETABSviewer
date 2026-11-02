@@ -66,6 +66,8 @@ export function parsearE2k(texto) {
     areas: {},
     asignLineas: {},
     asignAreas: {},
+    sistemasEjes: {}, // GRIDSYSTEM
+    ejes: [], // GRID: { sistema, LABEL, DIR, COORD }
   };
 
   let seccion = '';
@@ -89,6 +91,10 @@ export function parsearE2k(texto) {
     } else if (seccion.startsWith('FRAME SECTIONS') && palabra === 'FRAMESECTION') {
       const nombre = t[1].v;
       m.secciones[nombre] = { ...(m.secciones[nombre] ?? {}), ...paresClaveValor(t, 2) };
+    } else if (palabra === 'GRIDSYSTEM') {
+      m.sistemasEjes[t[1].v] = { ...(m.sistemasEjes[t[1].v] ?? {}), ...paresClaveValor(t, 2) };
+    } else if (palabra === 'GRID') {
+      m.ejes.push({ sistema: t[1].v, ...paresClaveValor(t, 2) });
     } else if (palabra === 'SHELLPROP') {
       // Vive en $ SLAB PROPERTIES, $ DECK PROPERTIES y $ WALL PROPERTIES.
       const nombre = t[1].v;

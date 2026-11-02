@@ -40,8 +40,10 @@
 
       <div class="bloque-form">
         <h2>2. Modelos</h2>
-        <p class="nota">Por cada modelo: el <b>.e2k</b> (File → Export → ETABS .e2k File) y, para el peso del acero, la tabla
-          <b>Frame Section Properties</b> exportada a CSV/texto (Display → Show Tables → Model Definition → Section Properties → Frame Section Properties → File → Export). Sin la tabla, las secciones de catálogo (HSS, W…) no tendrán peso.</p>
+        <p class="nota">Por cada modelo: el <b>.e2k</b> (File → Export → ETABS .e2k File) y, para el peso del acero, la tabla de
+          propiedades de secciones de frame: <b>Display → Show Tables → Model Definition → Section Properties → Frame Section Properties</b>
+          y luego <b>File → Export → Excel</b> (sirve el .xlsx tal cual). Sin la tabla, las secciones de catálogo (HSS, W…) se dibujan pero no tienen peso.
+          Sube los decimales de la columna Area en la tabla de ETABS si necesitas más exactitud.</p>
         <div id="modelos"></div>
         <button type="button" id="agregar" class="btn sec">Agregar otro modelo</button>
       </div>

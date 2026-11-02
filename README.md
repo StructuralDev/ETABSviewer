@@ -9,10 +9,24 @@ Al seleccionar uno o varios elementos muestra su geometría y sus cantidades: **
 ## Qué se exporta desde ETABS
 
 1. **`.e2k`** de cada modelo: `File → Export → ETABS .e2k File`. Trae geometría, pisos, materiales y espesores.
-2. **Tabla `Frame Section Properties`** (solo para el peso del acero): `Display → Show Tables → Model Definition → Section Properties → Frame Section Properties`, y luego `File → Export` a CSV/texto.
+2. **Tabla de propiedades de secciones de frame** (solo para el peso del acero): `Display → Show Tables → Model Definition → Section Properties → Frame Section Properties`, y luego `File → Export → Excel`. El `.xlsx` se carga tal cual (también sirve CSV/texto).
    El `.e2k` **no** trae el área de las secciones de catálogo (HSS, W, etc.); sin esta tabla esas secciones se dibujan pero no tienen peso.
+   ETABS redondea el área a los decimales de la tabla (p. ej. 0.1 cm²): sube los decimales de la columna Area si necesitas más exactitud.
 
 Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archivo).
+
+## Controles
+
+| Acción | Cómo |
+|---|---|
+| Seleccionar un elemento | Clic |
+| Seleccionar varios | Arrastrar con el botón izquierdo (caja) |
+| Sumar o quitar de la selección | Ctrl, Cmd o Mayús + clic o caja |
+| Zoom | Rueda |
+| Desplazar (pan) | Arrastrar con la rueda (botón central); también botón derecho |
+| Girar | Mayús + arrastrar con la rueda; en pantalla táctil, dos dedos |
+
+**Vistas** (barra superior): `3D`; `Planta` (elige un piso: muestra los objetos asignados a ese piso, vista cenital con el norte, +Y, arriba); `Alzado` (elige un eje de la cuadrícula de ETABS: muestra los objetos contenidos en su plano, mirando desde −Y para ejes numéricos y desde +X para ejes con letra). Planta y alzado usan cámara ortográfica y dibujan los ejes con sus burbujas.
 
 ## Publicar un paquete para un cliente
 
@@ -33,6 +47,7 @@ Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archiv
 ## Limitaciones conocidas
 
 - No se consideran offsets de extremos ni zonas rígidas: las longitudes son entre nodos.
+- Los ejes se leen de `$ GRIDS` solo para sistemas cartesianos sin rotación; el origen desplazado (XORIGIN/YORIGIN) es un supuesto sin validar.
 - La orientación de los contraventos (qué extremo va abajo) es un supuesto pendiente de confirmar contra ETABS.
 - Las áreas (losas y muros) siguen la sintaxis supuesta del `.e2k`: pendiente de validar con un modelo que las incluya. Muros solo rectangulares; losas tipo deck sin volumen.
 - Secciones no soportadas (ángulos, T, personalizadas) se dibujan como rectángulo envolvente; sus cantidades salen de la tabla si el área viene ahí.

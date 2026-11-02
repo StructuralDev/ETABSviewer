@@ -27,14 +27,9 @@
       <span id="titulo"></span>
       <select id="modelo-sel" aria-label="Modelo" hidden></select>
       <div class="grupo" role="group" aria-label="Vista">
-        <button data-vista="3d">3D</button>
-        <button data-vista="planta">Planta</button>
-        <button data-vista="frente">Frente</button>
-      </div>
-      <div class="grupo" role="group" aria-label="Selección">
-        <button data-modo="uno" aria-pressed="true" title="Clic selecciona uno; Ctrl+clic suma">Uno</button>
-        <button data-modo="varios" aria-pressed="false" title="Cada clic suma o quita un elemento">Varios</button>
-        <button data-modo="caja" aria-pressed="false" title="Arrastra para seleccionar con un rectángulo">Caja</button>
+        <button id="btn-3d" aria-pressed="true">3D</button>
+        <select id="sel-planta" aria-label="Planta"></select>
+        <select id="sel-alzado" aria-label="Alzado"></select>
       </div>
     </header>
     <main>

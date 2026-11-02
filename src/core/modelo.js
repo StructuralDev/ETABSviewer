@@ -217,6 +217,9 @@ export function construirModelo(e2k, opc = {}) {
     }
     let area = areaDeSeccion(forma, dim);
     let perfil = perfilDeSeccion(forma, dim);
+    // Dimensiones incompletas (p. ej. la tabla Summary solo trae el área): sin valores numéricos.
+    if (!Number.isFinite(area)) area = null;
+    if (perfil && !perfil.contorno.flat().every(Number.isFinite)) perfil = null;
     let origenArea = area === null ? null : 'dimensiones';
     if (typeof t?.area_m2 === 'number' && t.area_m2 > 0) {
       area = t.area_m2; // área exacta de ETABS (incluye radios de acuerdo)
@@ -366,6 +369,26 @@ export function construirModelo(e2k, opc = {}) {
     }
   }
 
+  // Ejes (grid lines) de ETABS. Solo sistemas cartesianos sin rotación.
+  const ejes = [];
+  for (const g of e2k.ejes) {
+    const sis = e2k.sistemasEjes[g.sistema] ?? {};
+    const dir = String(g.DIR ?? '').toUpperCase();
+    if ((sis.TYPE && String(sis.TYPE).toUpperCase() !== 'CARTESIAN') || (typeof sis.ROTATION === 'number' && sis.ROTATION !== 0)) {
+      avisos.push(`Sistema de ejes "${g.sistema}" no cartesiano o girado: no se dibujan sus ejes.`);
+      continue;
+    }
+    if ((dir !== 'X' && dir !== 'Y') || typeof g.COORD !== 'number') continue;
+    // Los nombres XORIGIN/YORIGIN son un supuesto (el modelo de prueba no tiene origen desplazado).
+    const origen = dir === 'X' ? sis.XORIGIN : sis.YORIGIN;
+    ejes.push({
+      sistema: g.sistema,
+      etiqueta: String(g.LABEL ?? ''),
+      dir, // X: línea en x = coord (letras); Y: línea en y = coord (números)
+      coord_m: r(m(g.COORD + (typeof origen === 'number' ? origen : 0)), 4),
+    });
+  }
+
   if (frames.length + areas.length === 0) {
     throw new ErrorModelo('No se pudo construir ningún elemento del modelo.');
   }
@@ -380,6 +403,7 @@ export function construirModelo(e2k, opc = {}) {
     pisos: pisosTop.map((p, k) => ({ nombre: p.nombre, elevacion_m: r(elev[k], 4) })).reverse(),
     materiales,
     secciones,
+    ejes,
     frames,
     areas,
     totales: {

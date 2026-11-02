@@ -5,8 +5,14 @@
 // ETABS: Display > Show Tables > Model Definition > Section Properties > Frame Section
 // Properties; luego File > Export > To CSV/Text.
 //
-// Columnas usadas (por nombre de encabezado): Name, Material, Shape, t3, t2, tf, tw, Area.
-// t3 = peralte (a lo largo del eje local 2), t2 = ancho (eje local 3).
+// Acepta texto (CSV/TSV) o las filas ya leídas de un .xlsx (ver xlsx.js). La hoja de Excel de
+// ETABS ("Frame Prop - Summary") trae título, encabezado, una fila de unidades ("cm²") y datos.
+//
+// Columnas usadas (por nombre de encabezado): Name, Material, Shape, Area y, si existen,
+// t3, t2, tf, tw. t3 = peralte (eje local 2), t2 = ancho (eje local 3).
+// La tabla "Summary" solo trae Area: con ella basta para el peso.
+// OJO: ETABS redondea el área a los decimales que muestre la tabla (p. ej. 0.1 cm²); aumenta la
+// precisión de la tabla en ETABS si necesitas más exactitud en el peso.
 
 import { factorLongitudAM } from './unidades.js';
 
@@ -45,16 +51,22 @@ const numero = (s) => {
 };
 
 /**
- * @param {string} texto
+ * @param {string|string[][]} entrada texto CSV/TSV o filas de una hoja de Excel
  * @param {string} [unidadLongitud='M'] unidad de las columnas de longitud si la tabla no la indica
  * @returns {Object<string,{material:string|null, forma:string|null, area_m2:number|null,
  *           D:number|null, B:number|null, TF:number|null, TW:number|null}>} dimensiones en m
  */
-export function parsearTablaSecciones(texto, unidadLongitud = 'M') {
-  const lineas = String(texto ?? '').split(/\r?\n/).filter((l) => l.trim() !== '');
-  if (lineas.length < 2) throw new ErrorTabla('La tabla de secciones está vacía.');
-  const sep = detectaSeparador(lineas);
-  const filas = lineas.map((l) => celdas(l, sep));
+export function parsearTablaSecciones(entrada, unidadLongitud = 'M') {
+  let filas;
+  if (Array.isArray(entrada)) {
+    filas = entrada.map((f) => f.map((c) => String(c ?? '').trim())).filter((f) => f.some((c) => c !== ''));
+  } else {
+    const lineas = String(entrada ?? '').split(/\r?\n/).filter((l) => l.trim() !== '');
+    if (lineas.length < 2) throw new ErrorTabla('La tabla de secciones está vacía.');
+    const sep = detectaSeparador(lineas);
+    filas = lineas.map((l) => celdas(l, sep));
+  }
+  if (filas.length < 2) throw new ErrorTabla('La tabla de secciones está vacía.');
 
   const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const iEnc = filas.findIndex((f) => f.map(norm).includes('name') && f.map(norm).includes('area'));
@@ -91,4 +103,16 @@ export function parsearTablaSecciones(texto, unidadLongitud = 'M') {
   }
   if (Object.keys(out).length === 0) throw new ErrorTabla('La tabla no contiene secciones.');
   return out;
+}
+
+// Busca entre las hojas de un libro de Excel la que contiene la tabla de secciones.
+export function parsearTablaDeHojas(hojas, unidadLongitud = 'M') {
+  for (const h of hojas) {
+    try {
+      return parsearTablaSecciones(h.filas, unidadLongitud);
+    } catch (e) {
+      if (!(e instanceof ErrorTabla)) throw e;
+    }
+  }
+  throw new ErrorTabla('Ninguna hoja del Excel tiene una tabla con las columnas "Name" y "Area".');
 }

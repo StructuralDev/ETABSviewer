@@ -4,6 +4,7 @@ import { Orbita } from './orbita.js';
 import { geometriaFrame, geometriaArea } from './geometria.js';
 import { resumir } from '../core/resumen.js';
 import { M2_A_CM2 } from '../core/unidades.js';
+import { elementosDePiso, elementosDeEje, azimutAlzado } from '../core/vistas.js';
 
 const TIPOS = { viga: 'Viga', columna: 'Columna', contraviento: 'Contraviento', losa: 'Losa', muro: 'Muro', rampa: 'Rampa' };
 const MAX_FILAS_LISTA = 500;
@@ -32,14 +33,15 @@ export class Visor {
     this.contenedor = contenedor;
     this.panel = panel;
     this.cajaEl = cajaSeleccion;
-    this.modo = 'uno'; // uno | varios | caja
     this.modelo = null;
     this.seleccion = new Set();
     this._pendiente = false;
 
     this.escena = new THREE.Scene();
     this.escena.background = colorToken('--alba-fondo-marco');
-    this.camara = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    this.camPersp = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    this.camOrto = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
+    this.camara = this.camPersp;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     contenedor.append(this.renderer.domElement);
@@ -56,11 +58,10 @@ export class Visor {
       seleccion: new THREE.MeshLambertMaterial({ color: colorToken('--alba-warning-500'), side: THREE.DoubleSide }),
     };
 
+    this.ejesGrupo = new THREE.Group();
+    this.escena.add(this.ejesGrupo);
     this.orbita = new Orbita(this.camara, this.renderer.domElement);
     this.orbita.alCambiar = () => this.pedirRender();
-    this._shift = false;
-    window.addEventListener('keydown', (e) => { if (e.key === 'Shift') this._shift = true; this._ajustaGiro(); });
-    window.addEventListener('keyup', (e) => { if (e.key === 'Shift') this._shift = false; this._ajustaGiro(); });
     this._conectaPuntero();
 
     new ResizeObserver(() => this._redimensiona()).observe(contenedor);
@@ -85,9 +86,7 @@ export class Visor {
       this._agrega(new THREE.Mesh(geometriaArea(a), this.mat[a.clase] ?? this.mat.otro), a);
     }
     this.escena.add(this.grupo);
-    this.orbita.vista('3d');
-    this.orbita.encuadrar(new THREE.Box3().setFromObject(this.grupo));
-    this.actualizaPanel();
+    this.vista3d();
   }
 
   _agrega(malla, elemento) {
@@ -97,18 +96,111 @@ export class Visor {
     this.mallas.push(malla);
   }
 
-  vista(nombre) {
-    this.orbita.vista(nombre);
-    this.orbita.encuadrar(new THREE.Box3().setFromObject(this.grupo));
+  // ---------- Vistas (3D, planta por piso, alzado por eje) ----------
+
+  _muestra(predicado) {
+    for (const m of this.mallas) m.visible = predicado(m.userData.el);
+    const sel = new Set([...this.seleccion].filter((m) => m.visible));
+    this._aplica(sel);
   }
 
-  fijaModo(modo) {
-    this.modo = modo;
-    this._ajustaGiro();
+  _cajaVisible(conEjes = false) {
+    const caja = new THREE.Box3();
+    for (const m of this.mallas) if (m.visible) caja.expandByObject(m);
+    if (conEjes) caja.expandByObject(this.ejesGrupo);
+    return caja;
   }
 
-  _ajustaGiro() {
-    this.orbita.giroIzquierdoActivo = !(this.modo === 'caja' || this._shift);
+  _usaCamara(cam) {
+    this.camara = cam;
+    this.orbita.usarCamara(cam);
+  }
+
+  vista3d() {
+    this._muestra(() => true);
+    this._usaCamara(this.camPersp);
+    this.orbita.orientar(Math.PI / 4, Math.PI / 6);
+    this.orbita.encuadrar(this._cajaVisible());
+    this._dibujaEjes({ modo: '3d' });
+  }
+
+  // Planta del piso como en ETABS: objetos asignados a ese piso, vista cenital, norte (+Y) arriba.
+  vistaPlanta(piso) {
+    const ids = new Set(elementosDePiso(this.modelo, piso));
+    this._muestra((e) => ids.has(e));
+    this._usaCamara(this.camOrto);
+    this.orbita.orientar(0, Math.PI / 2);
+    const nivel = this.modelo.pisos.find((p) => p.nombre === piso);
+    this._dibujaEjes({ modo: 'planta', z: nivel?.elevacion_m ?? 0 });
+    this.orbita.encuadrar(this._cajaVisible(true));
+  }
+
+  // Alzado del eje: objetos contenidos en su plano vertical, como la vista de elevación de ETABS.
+  vistaAlzado(eje) {
+    const ids = new Set(elementosDeEje(this.modelo, eje));
+    this._muestra((e) => ids.has(e));
+    this._usaCamara(this.camOrto);
+    this.orbita.orientar(azimutAlzado(eje), 0);
+    this._dibujaEjes({ modo: 'alzado', eje });
+    this.orbita.encuadrar(this._cajaVisible(true));
+  }
+
+  // Líneas de ejes con sus burbujas. En 3D y planta van horizontales a la altura del nivel; en
+  // alzado, los ejes perpendiculares al plano mirado se dibujan como líneas verticales.
+  _dibujaEjes({ modo, z, eje }) {
+    this.ejesGrupo.traverse((o) => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose?.(); });
+    this.ejesGrupo.clear();
+    const ejes = this.modelo.ejes ?? [];
+    if (ejes.length === 0) { this.pedirRender(); return; }
+    const todos = [...this.modelo.frames.flatMap((f) => [f.i, f.j]), ...this.modelo.areas.flatMap((a) => a.pts)];
+    const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+    for (const p of todos) for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], p[k]); mx[k] = Math.max(mx[k], p[k]); }
+    const margen = Math.max(0.3, 0.08 * Math.max(mx[0] - mn[0], mx[1] - mn[1], modo === 'alzado' ? mx[2] - mn[2] : 0));
+    const zBase = modo === 'planta' ? z : mn[2];
+    const color = colorToken('--alba-neutral-500');
+    const pos = [];
+    const aThree = (x, y, zz) => [x, zz, -y];
+    for (const g of ejes) {
+      let a, b;
+      if (modo === 'alzado') {
+        if (g.dir === eje.dir) continue; // los ejes del mismo sentido son paralelos a la vista
+        if (eje.dir === 'Y') { a = [g.coord_m, eje.coord_m, mn[2] - margen / 2]; b = [g.coord_m, eje.coord_m, mx[2] + margen]; }
+        else { a = [eje.coord_m, g.coord_m, mn[2] - margen / 2]; b = [eje.coord_m, g.coord_m, mx[2] + margen]; }
+      } else if (g.dir === 'X') {
+        a = [g.coord_m, mn[1] - margen, zBase]; b = [g.coord_m, mx[1] + margen, zBase];
+      } else {
+        a = [mn[0] - margen, g.coord_m, zBase]; b = [mx[0] + margen, g.coord_m, zBase];
+      }
+      pos.push(...aThree(...a), ...aThree(...b));
+      this.ejesGrupo.add(this._burbuja(g.etiqueta, aThree(...(modo === 'alzado' ? b : a)), color));
+    }
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    this.ejesGrupo.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.7 })));
+    this.pedirRender();
+  }
+
+  _burbuja(texto, posicion, color) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    g.strokeStyle = `#${color.getHexString()}`;
+    g.fillStyle = '#1A1C24';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.arc(32, 32, 28, 0, 2 * Math.PI);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#F8F8FE';
+    g.font = `600 ${texto.length > 2 ? 20 : 28}px Inter, "Segoe UI", sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(texto, 32, 33);
+    const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, sizeAttenuation: false });
+    const sp = new THREE.Sprite(mat);
+    sp.scale.setScalar(0.045);
+    sp.position.set(...posicion);
+    sp.renderOrder = 10;
+    return sp;
   }
 
   // ---------- Selección ----------
@@ -125,31 +217,42 @@ export class Visor {
     this.pedirRender();
   }
 
+  // Botón izquierdo: clic selecciona; arrastrar dibuja una caja de selección. Ctrl/Cmd/Mayús suma.
+  // La cámara se mueve con la rueda (ver orbita.js). Con dos dedos se cancela la caja.
   _conectaPuntero() {
     const dom = this.renderer.domElement;
     let inicio = null;
+    const activos = new Set();
+    const cancela = () => { inicio = null; this.cajaEl.style.display = 'none'; };
     dom.addEventListener('pointerdown', (e) => {
+      activos.add(e.pointerId);
+      if (activos.size > 1) return cancela();
       if (e.button !== 0) return;
-      inicio = { x: e.clientX, y: e.clientY, caja: this.modo === 'caja' || e.shiftKey, t: performance.now() };
+      inicio = { x: e.clientX, y: e.clientY, arrastra: false };
     });
     dom.addEventListener('pointermove', (e) => {
-      if (!inicio?.caja) return;
+      if (!inicio) return;
+      if (Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > UMBRAL_CLIC_PX) inicio.arrastra = true;
+      if (!inicio.arrastra) return;
       const r = dom.getBoundingClientRect();
-      const x0 = Math.min(inicio.x, e.clientX) - r.left, y0 = Math.min(inicio.y, e.clientY) - r.top;
       Object.assign(this.cajaEl.style, {
-        display: 'block', left: `${x0}px`, top: `${y0}px`,
+        display: 'block',
+        left: `${Math.min(inicio.x, e.clientX) - r.left}px`, top: `${Math.min(inicio.y, e.clientY) - r.top}px`,
         width: `${Math.abs(e.clientX - inicio.x)}px`, height: `${Math.abs(e.clientY - inicio.y)}px`,
       });
     });
-    dom.addEventListener('pointerup', (e) => {
+    const termina = (e) => {
+      activos.delete(e.pointerId);
       if (!inicio || e.button !== 0) return;
-      const mueve = Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > UMBRAL_CLIC_PX;
-      this.cajaEl.style.display = 'none';
       const aditivo = e.ctrlKey || e.metaKey || e.shiftKey;
-      if (inicio.caja && mueve) this._seleccionaCaja(inicio, e, aditivo);
-      else if (!mueve) this._seleccionaClic(e, aditivo);
-      inicio = null;
-    });
+      const { arrastra } = inicio;
+      const desde = inicio;
+      cancela();
+      if (arrastra) this._seleccionaCaja(desde, e, aditivo);
+      else this._seleccionaClic(e, aditivo);
+    };
+    dom.addEventListener('pointerup', termina);
+    dom.addEventListener('pointercancel', (e) => { activos.delete(e.pointerId); cancela(); });
   }
 
   _seleccionaClic(e, aditivo) {
@@ -157,11 +260,10 @@ export class Visor {
     const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     const rayo = new THREE.Raycaster();
     rayo.setFromCamera(ndc, this.camara);
-    const golpe = rayo.intersectObjects(this.mallas, false)[0]?.object;
-    const sumar = aditivo || this.modo === 'varios';
-    const nueva = sumar ? new Set(this.seleccion) : new Set();
+    const golpe = rayo.intersectObjects(this.mallas.filter((m) => m.visible), false)[0]?.object;
+    const nueva = aditivo ? new Set(this.seleccion) : new Set();
     if (golpe) {
-      if (sumar && nueva.has(golpe)) nueva.delete(golpe);
+      if (aditivo && nueva.has(golpe)) nueva.delete(golpe);
       else nueva.add(golpe);
     }
     this._aplica(nueva);
@@ -175,6 +277,7 @@ export class Visor {
     const nueva = aditivo ? new Set(this.seleccion) : new Set();
     const v = new THREE.Vector3();
     for (const m of this.mallas) {
+      if (!m.visible) continue;
       v.copy(m.geometry.boundingSphere.center).project(this.camara);
       if (v.z > 1) continue; // detrás de la cámara
       const px = ((v.x + 1) / 2) * r.width + r.left, py = ((1 - v.y) / 2) * r.height + r.top;
@@ -190,6 +293,10 @@ export class Visor {
     this._pendiente = true;
     requestAnimationFrame(() => {
       this._pendiente = false;
+      // Las burbujas de los ejes mantienen tamaño de pantalla: en perspectiva lo da sizeAttenuation=false;
+      // en ortográfica la escala del sprite es en unidades del mundo, así que se calcula aquí.
+      const escala = 0.045 * (this.camara.isOrthographicCamera ? this.camara.top - this.camara.bottom : 1);
+      for (const o of this.ejesGrupo.children) if (o.isSprite) o.scale.setScalar(escala);
       this.renderer.render(this.escena, this.camara);
     });
   }
@@ -198,9 +305,8 @@ export class Visor {
     const w = this.contenedor.clientWidth, h = this.contenedor.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h);
-    this.camara.aspect = w / h;
-    this.camara.updateProjectionMatrix();
-    this.pedirRender();
+    this.camPersp.aspect = w / h;
+    this.orbita?.actualizar(); // reajusta la cámara ortográfica y vuelve a dibujar
   }
 
   // ---------- Panel ----------
@@ -236,7 +342,7 @@ export class Visor {
       el('p', { class: 'nota' }, `${r.n} elementos: ${tipos}`),
       this._bloqueCantidades(r),
       r.sinCantidad > 0 ? el('p', { class: 'aviso' }, `${r.sinCantidad} elementos sin cantidades (sin área de sección o espesor).`) : '',
-      el('p', { class: 'nota' }, 'Haz clic en un elemento para ver sus datos. Ctrl o Mayús + clic suma elementos; Mayús + arrastrar selecciona con caja.'),
+      el('p', { class: 'nota' }, 'Clic para seleccionar un elemento; arrastra para seleccionar varios con una caja. Ctrl o Mayús suma a la selección. Rueda: zoom · arrastrar con la rueda: desplazar · Mayús + arrastrar con la rueda: girar.'),
       avisos.length ? el('details', {}, el('summary', {}, `Notas del modelo (${avisos.length})`), el('ul', {}, avisos.map((a) => el('li', {}, a)))) : '',
     );
   }

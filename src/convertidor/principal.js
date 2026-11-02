@@ -1,6 +1,7 @@
 // Convertidor: lee .e2k (y tabla de secciones), construye los modelos y descarga el paquete cifrado.
 import { construirPaquete, sellarPaquete, generarIdPaquete, generarContrasena } from '../core/paquete.js';
 import { resumir } from '../core/resumen.js';
+import { leerXlsx } from '../core/xlsx.js';
 
 const $ = (id) => document.getElementById(id);
 const UNIDADES_TABLA = ['M', 'CM', 'MM', 'IN', 'FT'];
@@ -27,10 +28,10 @@ function agregarModelo() {
       nodo('input', { id: `e${k}`, type: 'file', accept: '.e2k,.txt', 'data-e2k': '', required: '' })),
     nodo('div', { class: 'dos' },
       nodo('div', { class: 'campo' },
-        nodo('label', { for: `t${k}` }, 'Tabla Frame Section Properties (opcional)'),
-        nodo('input', { id: `t${k}`, type: 'file', accept: '.csv,.txt,.tsv', 'data-tabla': '' })),
+        nodo('label', { for: `t${k}` }, 'Tabla de secciones, .xlsx o .csv (opcional)'),
+        nodo('input', { id: `t${k}`, type: 'file', accept: '.xlsx,.csv,.txt,.tsv', 'data-tabla': '' })),
       nodo('div', { class: 'campo' },
-        nodo('label', { for: `u${k}` }, 'Unidad de longitud de la tabla (si no la indica)'),
+        nodo('label', { for: `u${k}` }, 'Unidad de la tabla (solo si no trae fila de unidades)'),
         nodo('select', { id: `u${k}`, 'data-unidad': '' }, UNIDADES_TABLA.map((u) => nodo('option', { value: u }, u.toLowerCase())))),
     ),
   );
@@ -38,6 +39,14 @@ function agregarModelo() {
 }
 
 const leer = (input) => input?.files?.[0]?.text() ?? Promise.resolve(undefined);
+
+// La tabla de secciones puede ser Excel (.xlsx) o texto (.csv/.tsv/.txt).
+async function leerTabla(input) {
+  const archivo = input?.files?.[0];
+  if (!archivo) return {};
+  if (/\.xlsx$/i.test(archivo.name)) return { hojasTabla: await leerXlsx(await archivo.arrayBuffer()) };
+  return { tabla: await archivo.text() };
+}
 
 function descargar(nombre, objeto) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(objeto)], { type: 'application/json' }));
@@ -69,7 +78,7 @@ $('forma').addEventListener('submit', async (ev) => {
       entradas.push({
         nombre: f.querySelector('[data-nombre]').value,
         e2k: await leer(f.querySelector('[data-e2k]')),
-        tabla: await leer(f.querySelector('[data-tabla]')),
+        ...(await leerTabla(f.querySelector('[data-tabla]'))),
         unidadTabla: f.querySelector('[data-unidad]').value,
       });
     }

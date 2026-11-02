@@ -45,6 +45,10 @@ header img { height: 22px; }
 .grupo button { background: var(--alt); color: var(--text2); border: 0; border-right: 1px solid var(--border); height: 31px; padding: 0 12px; font: 500 13px var(--font); cursor: pointer; }
 .grupo button:last-child { border-right: 0; }
 .grupo button:hover { background: var(--hover); color: var(--text); }
+.grupo select { width: auto; height: 31px; border: 0; border-right: 1px solid var(--border); border-radius: 0; background: var(--alt); color: var(--text2); font: 500 13px var(--font); padding: 0 8px; cursor: pointer; }
+.grupo select:last-child { border-right: 0; }
+.grupo select:hover { background: var(--hover); color: var(--text); }
+.grupo select.activo { background: var(--hover); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 .grupo button[aria-pressed=true] { background: var(--hover); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 
 main { display: grid; grid-template-columns: 1fr 340px; min-height: 0; }

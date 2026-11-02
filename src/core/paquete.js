@@ -2,7 +2,7 @@
 // y lo cifra. Es la única ruta de salida del convertidor. Sin acceso al DOM.
 
 import { parsearE2k } from './e2k.js';
-import { parsearTablaSecciones } from './tabla.js';
+import { parsearTablaSecciones, parsearTablaDeHojas } from './tabla.js';
 import { construirModelo } from './modelo.js';
 import { cifrarPaquete } from './cripto.js';
 
@@ -10,7 +10,8 @@ export class ErrorPaquete extends Error {}
 
 /**
  * @param {string} nombre nombre del paquete (cliente o proyecto)
- * @param {Array<{nombre:string, e2k:string, tabla?:string, unidadTabla?:string}>} entradas
+ * @param {Array<{nombre:string, e2k:string, tabla?:string, hojasTabla?:Array<{nombre:string,filas:string[][]}>, unidadTabla?:string}>} entradas
+ *        la tabla de secciones viene como texto (`tabla`) o como hojas de un .xlsx (`hojasTabla`)
  * @returns {{nombre:string, modelos:object[]}}
  */
 export function construirPaquete(nombre, entradas) {
@@ -19,7 +20,10 @@ export function construirPaquete(nombre, entradas) {
   const modelos = entradas.map((en, k) => {
     const etiqueta = en.nombre?.trim() || `Modelo ${k + 1}`;
     try {
-      const tablaSecciones = en.tabla ? parsearTablaSecciones(en.tabla, en.unidadTabla ?? 'M') : undefined;
+      const unidad = en.unidadTabla ?? 'M';
+      const tablaSecciones = en.hojasTabla
+        ? parsearTablaDeHojas(en.hojasTabla, unidad)
+        : en.tabla ? parsearTablaSecciones(en.tabla, unidad) : undefined;
       return construirModelo(parsearE2k(en.e2k), { nombre: etiqueta, tablaSecciones });
     } catch (e) {
       throw new ErrorPaquete(`${etiqueta}: ${e.message}`);
