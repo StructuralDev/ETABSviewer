@@ -18,7 +18,7 @@ const dec = new TextDecoder();
 // Unicode NFC: la misma contraseña con acentos o ñ da la misma clave sin importar el sistema donde se teclee.
 const normaliza = (c) => String(c ?? '').normalize('NFC');
 
-const DEBILES = /^(?:(.)+|0123456789+|1234567890+|password|contrase[nñ]a|qwerty|abc123)/i;
+const DEBILES = /^(?:(.)\1+$|0123456789+|1234567890+|password|contrase[nñ]a|qwerty|abc123)/i;
 
 const aB64 = (bytes) => {
   let s = '';

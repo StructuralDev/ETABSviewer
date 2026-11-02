@@ -32,6 +32,8 @@ await prueba('contraseña corta se rechaza al cifrar', async () => {
   await lanza(() => cifrarPaquete(paquete, 'corta', ITER), /al menos 14/);
   await lanza(() => cifrarPaquete(paquete, 'a'.repeat(20), ITER), /predecible/);
   await lanza(() => cifrarPaquete(paquete, 'password12345678', ITER), /predecible/);
+  // Empezar con una letra doble no es una contraseña débil por sí mismo
+  await cifrarPaquete(paquete, 'eexamen-frase-larga-2024', ITER);
 });
 
 await prueba('dos cifrados del mismo paquete difieren (sal e iv aleatorios)', async () => {
