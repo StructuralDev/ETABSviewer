@@ -9,6 +9,8 @@
   console.log = (...a) => { lineas.push(a.join(' ')); log(...a); };
   await import('./modelo.test.js');
   await import('./cripto.test.js');
+  await import('./resumen.test.js');
+  await import('./paquete.test.js');
   const { resultados } = await import('./lib.js');
   const malas = resultados.filter((r) => !r.ok).length;
   salida.textContent = lineas.join('\n') + `\n\n${resultados.length - malas}/${resultados.length} OK`;

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Convertidor de modelos ETABS</title>
+  <link rel="stylesheet" href="src/visor/estilo.css">
+  <style>
+    body { overflow-y: auto; }
+    .pagina { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+    .pagina h1 { font: 700 24px/1.2 var(--font); margin: 8px 0 4px; }
+    .pagina > p { color: var(--text2); margin: 0 0 16px; }
+    .bloque-form { background: var(--surf); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+    .bloque-form h2 { font-size: 16px; }
+    .campo { margin-bottom: 12px; }
+    .modelo { border: 1px solid var(--border); border-radius: var(--alba-radio-boton); padding: 12px; margin-bottom: 12px; background: var(--alt); display: grid; gap: 8px; }
+    .modelo input[type=file] { color: var(--text2); font: 400 12px var(--font); width: 100%; }
+    .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .fila-clave { display: flex; gap: 8px; }
+    .resultado .tarjeta { margin-top: 8px; }
+    code, .mono { font-family: Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; color: var(--alba-primary-200); }
+    @media (max-width: 600px) { .dos { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="pagina">
+    <img src="design/logo_alba.svg" alt="ALBA" style="height:24px">
+    <h1>Convertidor de modelos ETABS</h1>
+    <p>Uso interno. Todo se procesa en este navegador: los archivos originales no se suben a ningún lado.</p>
+
+    <form id="forma" autocomplete="off">
+      <div class="bloque-form">
+        <h2>1. Paquete (cliente o proyecto)</h2>
+        <div class="campo">
+          <label for="nombre">Nombre que verá el cliente</label>
+          <input id="nombre" type="text" placeholder="Ej. Torre de apuntalamiento TPO" required>
+        </div>
+      </div>
+
+      <div class="bloque-form">
+        <h2>2. Modelos</h2>
+        <p class="nota">Por cada modelo: el <b>.e2k</b> (File → Export → ETABS .e2k File) y, para el peso del acero, la tabla
+          <b>Frame Section Properties</b> exportada a CSV/texto (Display → Show Tables → Model Definition → Section Properties → Frame Section Properties → File → Export). Sin la tabla, las secciones de catálogo (HSS, W…) no tendrán peso.</p>
+        <div id="modelos"></div>
+        <button type="button" id="agregar" class="btn sec">Agregar otro modelo</button>
+      </div>
+
+      <div class="bloque-form">
+        <h2>3. Acceso</h2>
+        <div class="dos">
+          <div class="campo">
+            <label for="idp">Identificador del enlace</label>
+            <input id="idp" type="text" readonly>
+          </div>
+          <div class="campo">
+            <label for="clave">Contraseña (mín. 10 caracteres)</label>
+            <div class="fila-clave">
+              <input id="clave" type="text" required minlength="10">
+              <button type="button" id="generar" class="btn sec">Generar</button>
+            </div>
+          </div>
+        </div>
+        <p class="nota">Usa una contraseña distinta por cliente. El repositorio es público: la contraseña es lo único que protege los modelos, así que debe ser larga. Compártela por un canal distinto al del enlace.</p>
+      </div>
+
+      <button id="crear" class="btn" type="submit">Generar paquete cifrado</button>
+    </form>
+
+    <div id="error" class="error" role="alert" hidden></div>
+    <section id="resultado" class="bloque-form resultado" hidden></section>
+  </div>
+  <script type="module" src="src/convertidor/principal.js"></script>
+</body>
+</html>

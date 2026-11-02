@@ -1,4 +1,3 @@
-# Para proyectos sin build automatizable (Excel/VBA, HTML autocontenido): solo escaneo de seguridad.
 name: CI
 
 on:
@@ -14,3 +13,13 @@ jobs:
       - name: Escaneo de secretos y binarios
         shell: pwsh
         run: ./.github/scripts/scan-secretos.ps1
+
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Pruebas (sin dependencias)
+        run: node --test tests/

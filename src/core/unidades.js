@@ -46,3 +46,6 @@ export function pesoVolumetricoAKgM3(valor, unidadFuerza, unidadLongitud) {
   const l = factorLongitudAM(unidadLongitud);
   return (valor * factorFuerzaAKgf(unidadFuerza)) / (l * l * l);
 }
+
+// Solo para mostrar el área de sección en cm² (costumbre de catálogos de perfiles).
+export const M2_A_CM2 = 1e4;

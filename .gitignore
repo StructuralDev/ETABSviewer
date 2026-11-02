@@ -40,3 +40,4 @@ Thumbs.db
 *.bak
 entrada/
 !tests/fixtures/*.e2k
+models/prueba-local.enc.json

@@ -1,0 +1,48 @@
+// Arma el paquete de modelos de un cliente: lee los archivos de ETABS, construye cada modelo
+// y lo cifra. Es la única ruta de salida del convertidor. Sin acceso al DOM.
+
+import { parsearE2k } from './e2k.js';
+import { parsearTablaSecciones } from './tabla.js';
+import { construirModelo } from './modelo.js';
+import { cifrarPaquete } from './cripto.js';
+
+export class ErrorPaquete extends Error {}
+
+/**
+ * @param {string} nombre nombre del paquete (cliente o proyecto)
+ * @param {Array<{nombre:string, e2k:string, tabla?:string, unidadTabla?:string}>} entradas
+ * @returns {{nombre:string, modelos:object[]}}
+ */
+export function construirPaquete(nombre, entradas) {
+  if (!String(nombre ?? '').trim()) throw new ErrorPaquete('Falta el nombre del paquete.');
+  if (!Array.isArray(entradas) || entradas.length === 0) throw new ErrorPaquete('Agrega al menos un modelo.');
+  const modelos = entradas.map((en, k) => {
+    const etiqueta = en.nombre?.trim() || `Modelo ${k + 1}`;
+    try {
+      const tablaSecciones = en.tabla ? parsearTablaSecciones(en.tabla, en.unidadTabla ?? 'M') : undefined;
+      return construirModelo(parsearE2k(en.e2k), { nombre: etiqueta, tablaSecciones });
+    } catch (e) {
+      throw new ErrorPaquete(`${etiqueta}: ${e.message}`);
+    }
+  });
+  return { nombre: nombre.trim(), modelos };
+}
+
+// Devuelve el sobre cifrado listo para guardarse como models/<id>.enc.json.
+export function sellarPaquete(paquete, contrasena) {
+  return cifrarPaquete(paquete, contrasena);
+}
+
+// Identificador aleatorio para la URL (no revela el nombre del cliente).
+export function generarIdPaquete() {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Contraseña aleatoria de 4 grupos de 4 caracteres, sin símbolos ambiguos (0/O, 1/l/I).
+export function generarContrasena() {
+  const alfabeto = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const c = Array.from(bytes, (b) => alfabeto[b % alfabeto.length]);
+  return [0, 4, 8, 12].map((i) => c.slice(i, i + 4).join('')).join('-');
+}
