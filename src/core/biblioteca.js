@@ -19,8 +19,8 @@ const TIPOS = {
 };
 
 const campo = (bloque, nombre) => {
-  const m = new RegExp(`<${nombre}>\\s*([^<]*?)\\s*</${nombre}>`).exec(bloque);
-  return m ? m[1] : null;
+  const m = new RegExp(`<${nombre}>([^<]*)</${nombre}>`).exec(bloque);
+  return m ? m[1].trim() : null;
 };
 
 /**

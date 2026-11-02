@@ -38,7 +38,7 @@ Despliegue y seguridad: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 
 ## Publicar un paquete para un cliente
 
-1. Abre `convertidor.html` (en local: `python -m http.server 8000` y entra a `http://localhost:8000/convertidor.html`).
+1. Abre `convertidor.html` (en local: `python -m http.server 8000 --bind 127.0.0.1` y entra a `http://localhost:8000/convertidor.html`).
 2. Carga las bibliotecas de perfiles (una vez), captura el nombre del paquete, agrega uno o varios modelos (`.e2k`, y tabla solo si hace falta) y genera la contraseña.
 3. Se descarga `<identificador>.enc.json`. Cópialo a `models/` y súbelo por pull request.
 4. El enlace es `https://structuraldev.github.io/ETABSviewer/?c=<identificador>`.

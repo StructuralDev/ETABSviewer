@@ -40,12 +40,24 @@ function agregarModelo() {
   $('modelos').append(fila);
 }
 
-const leer = (input) => input?.files?.[0]?.text() ?? Promise.resolve(undefined);
+// Los archivos de ETABS pesan de KB a decenas de MB; más de esto casi seguro no es lo esperado.
+const MAX_BYTES_ENTRADA = 100 * 1024 * 1024;
+function revisaTamano(archivo) {
+  if (archivo && archivo.size > MAX_BYTES_ENTRADA) {
+    throw new Error(`"${archivo.name}" pesa ${(archivo.size / 1048576).toFixed(0)} MB; el máximo es ${MAX_BYTES_ENTRADA / 1048576} MB.`);
+  }
+}
+const leer = (input) => {
+  const archivo = input?.files?.[0];
+  revisaTamano(archivo);
+  return archivo?.text() ?? Promise.resolve(undefined);
+};
 
 // La tabla de secciones puede ser Excel (.xlsx) o texto (.csv/.tsv/.txt).
 async function leerTabla(input) {
   const archivo = input?.files?.[0];
   if (!archivo) return {};
+  revisaTamano(archivo);
   if (/\.xlsx$/i.test(archivo.name)) return { hojasTabla: await leerXlsx(await archivo.arrayBuffer()) };
   return { tabla: await archivo.text() };
 }
@@ -137,6 +149,7 @@ $('bibliotecas').addEventListener('change', async (ev) => {
   $('error').hidden = true;
   try {
     for (const archivo of ev.target.files) {
+      revisaTamano(archivo);
       const datos = parsearBibliotecaCsi(await archivo.text());
       await guardarBiblioteca(archivo.name.replace(/\.[^.]+$/, ''), datos);
     }

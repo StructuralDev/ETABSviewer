@@ -7,7 +7,7 @@ HTML autocontenido / sitio estático (JavaScript ES modules, sin build) publicad
 ## Comandos
 
 - Instalar dependencias: ninguna (three.js se versiona en `vendor/`).
-- Ejecutar: `python -m http.server 8000` en la raíz y abrir `http://localhost:8000/` (los módulos ES no cargan desde `file://`).
+- Ejecutar: `python -m http.server 8000 --bind 127.0.0.1` en la raíz y abrir `http://localhost:8000/` (los módulos ES no cargan desde `file://`).
 - Pruebas: `node --test tests/` (requiere Node.js 20+, sin dependencias).
 - Lint/formato: no aplica por ahora.
 - Build: no hay.

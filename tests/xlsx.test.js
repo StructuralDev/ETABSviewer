@@ -102,3 +102,13 @@ await prueba('entidades XML y texto con formato se decodifican', async () => {
   }, false));
   igual(hojas[0].filas[0][0], 'Mat & Nota');
 });
+
+await prueba('xlsx: offsets del zip fuera del archivo se rechazan con un mensaje claro', async () => {
+  const buf = await armarZip(libro, false);
+  const v = new DataView(buf);
+  // El desplazamiento de la primera entrada (directorio central) apunta mucho más allá del archivo
+  const fin = buf.byteLength - 22;
+  const inicioCentral = v.getUint32(fin + 16, true);
+  v.setUint32(inicioCentral + 42, 0x7fffffff, true);
+  await lanza(() => leerXlsx(buf), /fuera del archivo/);
+});

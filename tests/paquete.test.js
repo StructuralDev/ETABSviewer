@@ -12,8 +12,8 @@ await prueba('paquete de punta a punta: archivos -> cifrado -> descifrado', asyn
   ]);
   igual(p.nombre, 'Cliente Demo');
   igual(p.modelos.map((m) => m.nombre), ['Torre A', 'Torre B']);
-  const sobre = await sellarPaquete(p, 'frase-larga-123');
-  const abierto = await descifrarPaquete(sobre, 'frase-larga-123');
+  const sobre = await sellarPaquete(p, 'frase-larga-de-prueba-123');
+  const abierto = await descifrarPaquete(sobre, 'frase-larga-de-prueba-123');
   igual(abierto, p);
   // Torre A tiene tabla -> peso de C1|Nivel 1 = 0.004 m² × 3.26 m × 7849.0477 kg/m³ = 102.35 kg (cálculo manual)
   cerca(abierto.modelos[0].frames.find((f) => f.uid === 'C1|Nivel 1').peso_kg, 102.35, 0.01);

@@ -29,6 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verificar que models/ solo tenga paquetes cifrados
+        shell: pwsh
+        run: ./.github/scripts/verificar-modelos.ps1
       - name: Armar el sitio
         run: |
           mkdir _sitio

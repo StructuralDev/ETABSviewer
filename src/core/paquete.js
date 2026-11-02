@@ -44,11 +44,17 @@ export function generarIdPaquete() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Contraseña aleatoria de 4 grupos de 4 caracteres, sin símbolos ambiguos (0/O, 1/l/I).
+// Contraseña aleatoria de 4 grupos de 4 caracteres (~91 bits), sin símbolos ambiguos (0/O, 1/l/I).
+// Muestreo por rechazo: sin sesgo hacia los primeros caracteres del alfabeto.
 export function generarContrasena() {
   const alfabeto = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const c = Array.from(bytes, (b) => alfabeto[b % alfabeto.length]);
+  const limite = 256 - (256 % alfabeto.length);
+  const c = [];
+  while (c.length < 16) {
+    for (const b of crypto.getRandomValues(new Uint8Array(32))) {
+      if (b < limite && c.length < 16) c.push(alfabeto[b % alfabeto.length]);
+    }
+  }
   return [0, 4, 8, 12].map((i) => c.slice(i, i + 4).join('')).join('-');
 }
 

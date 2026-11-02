@@ -6,9 +6,27 @@ export class ErrorXlsx extends Error {}
 
 const dec = new TextDecoder();
 
+// Tope por entrada descomprimida: las tablas de ETABS pesan unos cientos de KB; esto frena zips maliciosos.
+const MAX_BYTES_DESCOMPRIMIDO = 200 * 1024 * 1024;
+
 async function inflarRaw(bytes) {
-  const flujo = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(flujo).arrayBuffer());
+  const lector = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const trozos = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    total += value.length;
+    if (total > MAX_BYTES_DESCOMPRIMIDO) {
+      await lector.cancel();
+      throw new ErrorXlsx('El archivo se descomprime a un tamaño excesivo; no se procesa.');
+    }
+    trozos.push(value);
+  }
+  const out = new Uint8Array(total);
+  let o = 0;
+  for (const t of trozos) { out.set(t, o); o += t.length; }
+  return out;
 }
 
 // Lee el directorio central del zip y devuelve { nombre -> () => Promise<Uint8Array> }.
@@ -29,9 +47,11 @@ function leerZip(buffer) {
     const tamComp = v.getUint32(p + 20, true);
     const nLong = v.getUint16(p + 28, true), nExtra = v.getUint16(p + 30, true), nCom = v.getUint16(p + 32, true);
     const local = v.getUint32(p + 42, true);
+    if (local + 30 > b.length || p + 46 + nLong > b.length) throw new ErrorXlsx('Directorio del zip dañado (posición fuera del archivo).');
     const nombre = dec.decode(b.subarray(p + 46, p + 46 + nLong));
     entradas[nombre] = async () => {
       const lN = v.getUint16(local + 26, true), lE = v.getUint16(local + 28, true);
+      if (local + 30 + lN + lE + tamComp > b.length) throw new ErrorXlsx('Entrada del zip dañada (tamaño fuera del archivo).');
       const datos = b.subarray(local + 30 + lN + lE, local + 30 + lN + lE + tamComp);
       if (metodo === 0) return datos;
       if (metodo === 8) return inflarRaw(datos);

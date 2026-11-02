@@ -8,12 +8,17 @@ export class ErrorCripto extends Error {}
 
 // OWASP Password Storage Cheat Sheet (2023): PBKDF2-HMAC-SHA256 con 600 000 iteraciones.
 export const ITERACIONES_PBKDF2 = 600_000;
-export const LONGITUD_MINIMA_CONTRASENA = 10;
-const BYTES_SAL = 16;
-const BYTES_IV = 12; // tamaño recomendado para AES-GCM (NIST SP 800-38D)
+export const LONGITUD_MINIMA_CONTRASENA = 14;
+const LONGITUD_SAL = 16; // bytes
+const LONGITUD_IV = 12; // bytes
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
+
+// Unicode NFC: la misma contraseña con acentos o ñ da la misma clave sin importar el sistema donde se teclee.
+const normaliza = (c) => String(c ?? '').normalize('NFC');
+
+const DEBILES = /^(?:(.)+|0123456789+|1234567890+|password|contrase[nñ]a|qwerty|abc123)/i;
 
 const aB64 = (bytes) => {
   let s = '';
@@ -33,7 +38,7 @@ const descomprimir = (bytes) =>
   flujoABytes(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')));
 
 async function derivarClave(contrasena, sal, iteraciones) {
-  const base = await crypto.subtle.importKey('raw', enc.encode(contrasena), 'PBKDF2', false, ['deriveKey']);
+  const base = await crypto.subtle.importKey('raw', enc.encode(normaliza(contrasena)), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: iteraciones },
     base,
@@ -44,11 +49,14 @@ async function derivarClave(contrasena, sal, iteraciones) {
 }
 
 export async function cifrarPaquete(paquete, contrasena, iteraciones = ITERACIONES_PBKDF2) {
-  if (typeof contrasena !== 'string' || contrasena.length < LONGITUD_MINIMA_CONTRASENA) {
+  if (typeof contrasena !== 'string' || normaliza(contrasena).length < LONGITUD_MINIMA_CONTRASENA) {
     throw new ErrorCripto(`La contraseña debe tener al menos ${LONGITUD_MINIMA_CONTRASENA} caracteres.`);
   }
-  const sal = crypto.getRandomValues(new Uint8Array(BYTES_SAL));
-  const iv = crypto.getRandomValues(new Uint8Array(BYTES_IV));
+  if (DEBILES.test(contrasena) || new Set(contrasena).size < 6) {
+    throw new ErrorCripto('La contraseña es demasiado predecible: usa la generada o una frase larga con palabras poco comunes.');
+  }
+  const sal = crypto.getRandomValues(new Uint8Array(LONGITUD_SAL));
+  const iv = crypto.getRandomValues(new Uint8Array(LONGITUD_IV));
   const clave = await derivarClave(contrasena, sal, iteraciones);
   const plano = await comprimir(enc.encode(JSON.stringify(paquete)));
   const cifrado = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, clave, plano));
@@ -72,8 +80,10 @@ export async function descifrarPaquete(sobre, contrasena) {
   }
   let cifrado;
   try {
-    const clave = await derivarClave(String(contrasena ?? ''), deB64(sobre.sal), sobre.iter);
-    cifrado = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: deB64(sobre.iv) }, clave, deB64(sobre.datos));
+    const sal = deB64(sobre.sal), iv = deB64(sobre.iv);
+    if (sal.length !== LONGITUD_SAL || iv.length !== LONGITUD_IV) throw new Error('longitudes');
+    const clave = await derivarClave(contrasena, sal, sobre.iter);
+    cifrado = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, clave, deB64(sobre.datos));
   } catch {
     // GCM autentica: contraseña errónea o archivo alterado fallan igual, sin distinguir.
     throw new ErrorCripto('Contraseña incorrecta o archivo dañado.');

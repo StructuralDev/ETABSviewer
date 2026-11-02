@@ -7,7 +7,7 @@
 - **Modelos:** únicamente cifrados (`models/<id>.enc.json`, AES-256-GCM). Los `.e2k`, `.edb`, tablas y contraseñas **no** van al repositorio.
 - **Enlace para el cliente:** `https://structuraldev.github.io/ETABSviewer/?c=<id>` (opcional `&m=<n>` para abrir un modelo concreto).
 - **Google Sites:** `Insertar → Incrustar → Por URL`, pegar el enlace. GitHub Pages no bloquea la inserción en un iframe.
-- **Convertidor:** herramienta interna; se usa en local (`python -m http.server 8000` → `http://localhost:8000/convertidor.html`).
+- **Convertidor:** herramienta interna; se usa en local (`python -m http.server 8000 --bind 127.0.0.1` → `http://localhost:8000/convertidor.html`).
 
 ## Límite que hay que tener claro
 

@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   seguridad:
     runs-on: ubuntu-latest
@@ -13,6 +16,9 @@ jobs:
       - name: Escaneo de secretos y binarios
         shell: pwsh
         run: ./.github/scripts/scan-secretos.ps1
+      - name: Solo modelos cifrados
+        shell: pwsh
+        run: ./.github/scripts/verificar-modelos.ps1
 
   pruebas:
     runs-on: ubuntu-latest
