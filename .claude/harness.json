@@ -1,0 +1,5 @@
+{
+  "verificaciones": [
+    { "nombre": "pruebas", "comando": "node --test tests/" }
+  ]
+}

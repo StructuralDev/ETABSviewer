@@ -1,0 +1,7 @@
+# Los cambios que tocan el acceso, el cifrado o la publicación requieren revisión de la persona responsable.
+/src/core/cripto.js @StructuralDev
+/src/visor/principal.js @StructuralDev
+/index.html @StructuralDev
+/.github/ @StructuralDev
+/vendor/ @StructuralDev
+/models/ @StructuralDev

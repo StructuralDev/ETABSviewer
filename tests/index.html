@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pruebas</title>
+<pre id="salida">Ejecutando…</pre>
+<script type="module">
+  const salida = document.getElementById('salida');
+  const lineas = [];
+  const log = console.log;
+  console.log = (...a) => { lineas.push(a.join(' ')); log(...a); };
+  await import('./modelo.test.js');
+  await import('./cripto.test.js');
+  await import('./resumen.test.js');
+  await import('./paquete.test.js');
+  await import('./vistas.test.js');
+  await import('./xlsx.test.js');
+  await import('./biblioteca.test.js');
+  await import('./caja.test.js');
+  const { resultados } = await import('./lib.js');
+  const malas = resultados.filter((r) => !r.ok).length;
+  salida.textContent = lineas.join('\n') + `\n\n${resultados.length - malas}/${resultados.length} OK`;
+  document.title = malas === 0 ? 'PASS' : 'FAIL';
+</script>
