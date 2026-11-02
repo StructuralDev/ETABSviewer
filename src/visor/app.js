@@ -5,6 +5,7 @@ import { geometriaFrame, geometriaArea } from './geometria.js';
 import { resumir } from '../core/resumen.js';
 import { M2_A_CM2 } from '../core/unidades.js';
 import { elementosDePiso, elementosDeEje, azimutAlzado } from '../core/vistas.js';
+import { normalizaRect, modoDeCaja, puntoEnRect, puntosDentro, segmentoTocaRect, poligonoTocaRect } from '../core/caja.js';
 
 const TIPOS = { viga: 'Viga', columna: 'Columna', contraviento: 'Contraviento', losa: 'Losa', muro: 'Muro', rampa: 'Rampa' };
 const MAX_FILAS_LISTA = 500;
@@ -63,6 +64,7 @@ export class Visor {
     this.orbita = new Orbita(this.camara, this.renderer.domElement);
     this.orbita.alCambiar = () => this.pedirRender();
     this._conectaPuntero();
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.limpiarSeleccion(); });
 
     new ResizeObserver(() => this._redimensiona()).observe(contenedor);
     this._redimensiona();
@@ -155,7 +157,12 @@ export class Visor {
     const todos = [...this.modelo.frames.flatMap((f) => [f.i, f.j]), ...this.modelo.areas.flatMap((a) => a.pts)];
     const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
     for (const p of todos) for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], p[k]); mx[k] = Math.max(mx[k], p[k]); }
-    const margen = Math.max(0.3, 0.08 * Math.max(mx[0] - mn[0], mx[1] - mn[1], modo === 'alzado' ? mx[2] - mn[2] : 0));
+    // En 3D las burbujas se alejan bastante de la estructura para no estorbar; en planta y alzado van pegadas.
+    const margen = modo === '3d'
+      ? Math.max(1.5, 0.2 * Math.max(mx[0] - mn[0], mx[1] - mn[1]))
+      : Math.max(0.3, 0.08 * Math.max(mx[0] - mn[0], mx[1] - mn[1], modo === 'alzado' ? mx[2] - mn[2] : 0));
+    this._escalaBurbuja = modo === '3d' ? 0.028 : 0.045;
+    const opacidad = modo === '3d' ? 0.5 : 0.95;
     const zBase = modo === 'planta' ? z : mn[2];
     const color = colorToken('--alba-neutral-500');
     const pos = [];
@@ -172,14 +179,14 @@ export class Visor {
         a = [mn[0] - margen, g.coord_m, zBase]; b = [mx[0] + margen, g.coord_m, zBase];
       }
       pos.push(...aThree(...a), ...aThree(...b));
-      this.ejesGrupo.add(this._burbuja(g.etiqueta, aThree(...(modo === 'alzado' ? b : a)), color));
+      this.ejesGrupo.add(this._burbuja(g.etiqueta, aThree(...(modo === 'alzado' ? b : a)), color, opacidad));
     }
     const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    this.ejesGrupo.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.7 })));
+    this.ejesGrupo.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: modo === '3d' ? 0.3 : 0.7 })));
     this.pedirRender();
   }
 
-  _burbuja(texto, posicion, color) {
+  _burbuja(texto, posicion, color, opacidad) {
     const c = document.createElement('canvas');
     c.width = c.height = 64;
     const g = c.getContext('2d');
@@ -195,7 +202,7 @@ export class Visor {
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(texto, 32, 33);
-    const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, sizeAttenuation: false });
+    const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, sizeAttenuation: false, transparent: true, opacity: opacidad });
     const sp = new THREE.Sprite(mat);
     sp.scale.setScalar(0.045);
     sp.position.set(...posicion);
@@ -235,6 +242,7 @@ export class Visor {
       if (Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > UMBRAL_CLIC_PX) inicio.arrastra = true;
       if (!inicio.arrastra) return;
       const r = dom.getBoundingClientRect();
+      this.cajaEl.className = modoDeCaja(inicio.x, e.clientX); // 'ventana' (→) o 'cruce' (←), como en CAD
       Object.assign(this.cajaEl.style, {
         display: 'block',
         left: `${Math.min(inicio.x, e.clientX) - r.left}px`, top: `${Math.min(inicio.y, e.clientY) - r.top}px`,
@@ -261,29 +269,54 @@ export class Visor {
     const rayo = new THREE.Raycaster();
     rayo.setFromCamera(ndc, this.camara);
     const golpe = rayo.intersectObjects(this.mallas.filter((m) => m.visible), false)[0]?.object;
+    if (!golpe) return; // clic en vacío no cambia la selección: se limpia con Esc
     const nueva = aditivo ? new Set(this.seleccion) : new Set();
-    if (golpe) {
-      if (aditivo && nueva.has(golpe)) nueva.delete(golpe);
-      else nueva.add(golpe);
-    }
+    if (aditivo && nueva.has(golpe)) nueva.delete(golpe);
+    else nueva.add(golpe);
     this._aplica(nueva);
   }
 
-  // Selecciona los elementos cuyo centro proyectado cae dentro del rectángulo arrastrado.
+  // Punto 3D -> pantalla (px de la ventana); null si queda detrás de la cámara o fuera del volumen.
+  _aPantalla(v, r) {
+    const p = v.clone().project(this.camara);
+    if (p.z > 1 || p.z < -1) return null;
+    return [((p.x + 1) / 2) * r.width + r.left, ((1 - p.y) / 2) * r.height + r.top];
+  }
+
+  _vertices(malla) {
+    if (!malla.userData.verts) {
+      const pos = malla.geometry.getAttribute('position');
+      malla.userData.verts = Array.from({ length: pos.count }, (_, k) => new THREE.Vector3().fromBufferAttribute(pos, k));
+    }
+    return malla.userData.verts;
+  }
+
+  // Caja estilo CAD. Izquierda -> derecha (ventana): solo lo que queda completamente dentro.
+  // Derecha -> izquierda (cruce): todo lo que la toque, aunque sea en parte.
   _seleccionaCaja(a, b, aditivo) {
     const r = this.renderer.domElement.getBoundingClientRect();
-    const x0 = Math.min(a.x, b.clientX), x1 = Math.max(a.x, b.clientX);
-    const y0 = Math.min(a.y, b.clientY), y1 = Math.max(a.y, b.clientY);
-    const nueva = aditivo ? new Set(this.seleccion) : new Set();
-    const v = new THREE.Vector3();
+    const rect = normalizaRect(a.x, a.y, b.clientX, b.clientY);
+    const modo = modoDeCaja(a.x, b.clientX);
+    const aThree = (p) => new THREE.Vector3(p[0], p[2], -p[1]);
+    const tomados = new Set();
     for (const m of this.mallas) {
       if (!m.visible) continue;
-      v.copy(m.geometry.boundingSphere.center).project(this.camara);
-      if (v.z > 1) continue; // detrás de la cámara
-      const px = ((v.x + 1) / 2) * r.width + r.left, py = ((1 - v.y) / 2) * r.height + r.top;
-      if (px >= x0 && px <= x1 && py >= y0 && py <= y1) nueva.add(m);
+      const pv = this._vertices(m).map((v) => this._aPantalla(v, r));
+      if (pv.some((p) => p === null)) continue; // parte detrás de la cámara: no se toma
+      if (modo === 'ventana') {
+        if (puntosDentro(pv, rect)) tomados.add(m);
+        continue;
+      }
+      const e = m.userData.el;
+      let toca = pv.some((p) => puntoEnRect(p, rect));
+      if (!toca) {
+        const eje = (e.i ? [e.i, e.j] : e.pts).map((p) => this._aPantalla(aThree(p), r));
+        if (!eje.includes(null)) toca = e.i ? segmentoTocaRect(eje[0], eje[1], rect) : poligonoTocaRect(eje, rect);
+      }
+      if (toca) tomados.add(m);
     }
-    this._aplica(nueva);
+    if (tomados.size === 0) return; // una caja vacía no cambia la selección
+    this._aplica(aditivo ? new Set([...this.seleccion, ...tomados]) : tomados);
   }
 
   // ---------- Render ----------
@@ -295,7 +328,7 @@ export class Visor {
       this._pendiente = false;
       // Las burbujas de los ejes mantienen tamaño de pantalla: en perspectiva lo da sizeAttenuation=false;
       // en ortográfica la escala del sprite es en unidades del mundo, así que se calcula aquí.
-      const escala = 0.045 * (this.camara.isOrthographicCamera ? this.camara.top - this.camara.bottom : 1);
+      const escala = (this._escalaBurbuja ?? 0.045) * (this.camara.isOrthographicCamera ? this.camara.top - this.camara.bottom : 1);
       for (const o of this.ejesGrupo.children) if (o.isSprite) o.scale.setScalar(escala);
       this.renderer.render(this.escena, this.camara);
     });
@@ -342,7 +375,7 @@ export class Visor {
       el('p', { class: 'nota' }, `${r.n} elementos: ${tipos}`),
       this._bloqueCantidades(r),
       r.sinCantidad > 0 ? el('p', { class: 'aviso' }, `${r.sinCantidad} elementos sin cantidades (sin área de sección o espesor).`) : '',
-      el('p', { class: 'nota' }, 'Clic para seleccionar un elemento; arrastra para seleccionar varios con una caja. Ctrl o Mayús suma a la selección. Rueda: zoom · arrastrar con la rueda: desplazar · Mayús + arrastrar con la rueda: girar.'),
+      el('p', { class: 'nota' }, 'Clic: selecciona. Caja de izquierda a derecha: solo lo que quede completo dentro; de derecha a izquierda: todo lo que toque. Ctrl o Mayús suma · Esc limpia la selección. Rueda: zoom · arrastrar con la rueda: desplazar · Mayús + arrastrar con la rueda: girar.'),
       avisos.length ? el('details', {}, el('summary', {}, `Notas del modelo (${avisos.length})`), el('ul', {}, avisos.map((a) => el('li', {}, a)))) : '',
     );
   }
@@ -383,7 +416,6 @@ export class Visor {
       el('div', { class: 'tarjeta' }, filas),
       el('h3', {}, 'Cantidades'),
       el('div', { class: 'tarjeta destacada' }, cant),
-      el('button', { class: 'btn sec', onclick: () => this.limpiarSeleccion() }, 'Limpiar selección'),
     );
   }
 
@@ -397,7 +429,7 @@ export class Visor {
       e.volumen_m3 === null ? '—' : fmt(e.volumen_m3, 4),
       e.i ? `${fmt(e.longitud_m)} m` : `${fmt(e.area_m2)} m²`,
     ];
-    const cab = ['Elemento', 'Sección', 'Peso (kg)', 'Volumen (m³)', 'Geometría'];
+    const cab = ['Elemento', 'Sección', 'Peso (kg)', 'Vol. (m³)', 'Geom.'];
     const filas = elems.map(filaDe);
     const copiar = async () => {
       const tsv = [cab, ...filas].map((f) => f.join('\t')).join('\n');
@@ -408,9 +440,7 @@ export class Visor {
       el('p', { class: 'nota' }, tipos),
       this._bloqueCantidades(r),
       r.sinCantidad > 0 ? el('p', { class: 'aviso' }, `${r.sinCantidad} sin cantidades.`) : '',
-      el('div', { class: 'acciones' },
-        el('button', { class: 'btn sec', onclick: () => this.limpiarSeleccion() }, 'Limpiar'),
-        el('button', { class: 'btn sec', onclick: copiar }, 'Copiar tabla')),
+      el('div', { class: 'acciones' }, el('button', { class: 'btn sec', onclick: copiar }, 'Copiar tabla')),
       el('div', { class: 'lista' }, el('table', {},
         el('thead', {}, el('tr', {}, cab.map((c) => el('th', {}, c)))),
         el('tbody', {}, filas.slice(0, MAX_FILAS_LISTA).map((f) => el('tr', {}, f.map((c, k) => el('td', { class: k >= 2 ? 'num' : '' }, c))))))),

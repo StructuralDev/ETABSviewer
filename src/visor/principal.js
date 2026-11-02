@@ -38,10 +38,6 @@ function abrir(paquete) {
   $('titulo').textContent = paquete.nombre;
 
   const visor = new Visor({ contenedor: $('lienzo'), panel: $('panel'), cajaSeleccion: $('caja') });
-  const sel = $('modelo-sel');
-  sel.replaceChildren(...paquete.modelos.map((m, k) => new Option(m.nombre, String(k))));
-  sel.hidden = paquete.modelos.length < 2;
-
   const selPlanta = $('sel-planta'), selAlzado = $('sel-alzado'), btn3d = $('btn-3d');
   const marca = (activo) => {
     btn3d.setAttribute('aria-pressed', String(activo === btn3d));
@@ -78,8 +74,42 @@ function abrir(paquete) {
     visor.vistaAlzado(visor.modelo.ejes[Number(selAlzado.value)]);
     marca(selAlzado);
   });
-  sel.addEventListener('change', () => cargar(Number(sel.value)));
-  cargar(0);
+
+  // Pestañas de modelos: con un solo modelo no se muestran.
+  const pestanas = $('pestanas');
+  const activa = (k) => {
+    for (const b of pestanas.children) b.setAttribute('aria-selected', String(b.dataset.k === String(k)));
+  };
+  pestanas.replaceChildren(...paquete.modelos.map((m, k) => {
+    const b = document.createElement('button');
+    b.setAttribute('role', 'tab');
+    b.dataset.k = String(k);
+    b.textContent = m.nombre;
+    b.addEventListener('click', () => { cargar(k); activa(k); });
+    return b;
+  }));
+  pestanas.hidden = paquete.modelos.length < 2;
+  // ?m=2 abre directamente el tercer modelo (útil para enlaces desde Google Sites).
+  const pedido = Number(new URLSearchParams(location.search).get('m'));
+  const inicial = Number.isInteger(pedido) && pedido >= 0 && pedido < paquete.modelos.length ? pedido : 0;
+  cargar(inicial);
+  activa(inicial);
+
+  // Divisor para cambiar el ancho del panel de información.
+  const divisor = $('divisor');
+  divisor.addEventListener('pointerdown', (e) => {
+    divisor.setPointerCapture(e.pointerId);
+    divisor.classList.add('arrastrando');
+  });
+  divisor.addEventListener('pointermove', (e) => {
+    if (!divisor.hasPointerCapture(e.pointerId)) return;
+    const ancho = Math.min(Math.max(window.innerWidth - e.clientX, 300), window.innerWidth * 0.7);
+    document.documentElement.style.setProperty('--panel-w', `${ancho}px`);
+  });
+  divisor.addEventListener('pointerup', (e) => {
+    divisor.releasePointerCapture(e.pointerId);
+    divisor.classList.remove('arrastrando');
+  });
 }
 
 $('login-form').addEventListener('submit', async (ev) => {

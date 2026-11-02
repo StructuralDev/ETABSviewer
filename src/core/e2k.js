@@ -71,6 +71,7 @@ export function parsearE2k(texto) {
   };
 
   let seccion = '';
+  let archivoActual = null; // biblioteca de perfiles vigente (FILE) en $ FRAME SECTIONS
   for (const crudo of texto.split(/\r?\n/)) {
     const linea = crudo.trim();
     if (linea === '') continue;
@@ -90,7 +91,11 @@ export function parsearE2k(texto) {
       m.materiales[nombre] = { ...(m.materiales[nombre] ?? {}), ...paresClaveValor(t, 2) };
     } else if (seccion.startsWith('FRAME SECTIONS') && palabra === 'FRAMESECTION') {
       const nombre = t[1].v;
-      m.secciones[nombre] = { ...(m.secciones[nombre] ?? {}), ...paresClaveValor(t, 2) };
+      const kv = paresClaveValor(t, 2);
+      // ETABS escribe FILE solo cuando cambia de biblioteca: las secciones siguientes la heredan.
+      if (kv.FILE) archivoActual = kv.FILE;
+      else if (!m.secciones[nombre] && archivoActual) kv.FILE = archivoActual;
+      m.secciones[nombre] = { ...(m.secciones[nombre] ?? {}), ...kv };
     } else if (palabra === 'GRIDSYSTEM') {
       m.sistemasEjes[t[1].v] = { ...(m.sistemasEjes[t[1].v] ?? {}), ...paresClaveValor(t, 2) };
     } else if (palabra === 'GRID') {

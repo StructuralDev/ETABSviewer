@@ -2,6 +2,8 @@
 import { construirPaquete, sellarPaquete, generarIdPaquete, generarContrasena } from '../core/paquete.js';
 import { resumir } from '../core/resumen.js';
 import { leerXlsx } from '../core/xlsx.js';
+import { parsearBibliotecaCsi } from '../core/biblioteca.js';
+import { guardarBiblioteca, borrarBiblioteca, leerBibliotecas } from './bibliotecas.js';
 
 const $ = (id) => document.getElementById(id);
 const UNIDADES_TABLA = ['M', 'CM', 'MM', 'IN', 'FT'];
@@ -82,7 +84,7 @@ $('forma').addEventListener('submit', async (ev) => {
         unidadTabla: f.querySelector('[data-unidad]').value,
       });
     }
-    const paquete = construirPaquete($('nombre').value, entradas);
+    const paquete = construirPaquete($('nombre').value, entradas, await leerBibliotecas());
     const sobre = await sellarPaquete(paquete, $('clave').value);
     const archivo = `${$('idp').value}.enc.json`;
     descargar(archivo, sobre);
@@ -96,7 +98,7 @@ $('forma').addEventListener('submit', async (ev) => {
           nodo('div', { class: 'fila' }, nodo('b', {}, m.nombre), nodo('span', { class: 'v' }, `${r.n} elementos`)),
           nodo('div', { class: 'fila' }, nodo('span', { class: 'k' }, 'Acero'), nodo('span', { class: 'v' }, `${r.peso_acero_kg.toLocaleString('es-MX', { maximumFractionDigits: 1 })} kg`)),
           nodo('div', { class: 'fila' }, nodo('span', { class: 'k' }, 'Concreto'), nodo('span', { class: 'v' }, `${r.volumen_concreto_m3.toLocaleString('es-MX', { maximumFractionDigits: 2 })} m³`)),
-          r.sinCantidad ? nodo('p', { class: 'aviso' }, `${r.sinCantidad} elementos sin cantidades (falta la tabla de secciones o el espesor).`) : '',
+          r.sinCantidad ? nodo('p', { class: 'aviso' }, `${r.sinCantidad} elementos sin cantidades (falta la biblioteca de perfiles, la tabla de secciones o el espesor).`) : '',
           nodo('details', {}, nodo('summary', {}, `Notas (${m.avisos.length})`), nodo('ul', {}, m.avisos.map((a) => nodo('li', {}, a)))));
       }),
       nodo('p', { class: 'nota' }, 'Pasos: 1) copia el archivo descargado a la carpeta ', nodo('code', {}, 'models/'),
@@ -111,3 +113,37 @@ $('forma').addEventListener('submit', async (ev) => {
     $('crear').disabled = false;
   }
 });
+
+// ---------- Bibliotecas de perfiles guardadas en el navegador ----------
+
+async function pintarBibliotecas() {
+  let todas = {};
+  try { todas = await leerBibliotecas(); } catch { /* IndexedDB no disponible: se trabaja sin bibliotecas guardadas */ }
+  const lista = $('lista-bibliotecas');
+  lista.replaceChildren(...(Object.keys(todas).length === 0
+    ? [nodo('li', {}, 'Aún no hay bibliotecas cargadas.')]
+    : Object.entries(todas).map(([nombre, b]) => nodo('li', {},
+      `${nombre} · ${Object.keys(b.perfiles).length} perfiles `,
+      nodo('button', { type: 'button', class: 'btn sec', 'data-borrar': nombre, style: 'height:24px;padding:0 8px;font-size:12px' }, 'Quitar')))));
+}
+
+$('lista-bibliotecas').addEventListener('click', async (ev) => {
+  const nombre = ev.target.dataset?.borrar;
+  if (nombre) { await borrarBiblioteca(nombre); pintarBibliotecas(); }
+});
+
+$('bibliotecas').addEventListener('change', async (ev) => {
+  $('error').hidden = true;
+  try {
+    for (const archivo of ev.target.files) {
+      const datos = parsearBibliotecaCsi(await archivo.text());
+      await guardarBiblioteca(archivo.name.replace(/\.[^.]+$/, ''), datos);
+    }
+  } catch (e) {
+    mostrarError(e.message);
+  }
+  ev.target.value = '';
+  pintarBibliotecas();
+});
+
+pintarBibliotecas();

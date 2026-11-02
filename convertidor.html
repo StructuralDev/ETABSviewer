@@ -39,17 +39,26 @@
       </div>
 
       <div class="bloque-form">
-        <h2>2. Modelos</h2>
-        <p class="nota">Por cada modelo: el <b>.e2k</b> (File → Export → ETABS .e2k File) y, para el peso del acero, la tabla de
-          propiedades de secciones de frame: <b>Display → Show Tables → Model Definition → Section Properties → Frame Section Properties</b>
-          y luego <b>File → Export → Excel</b> (sirve el .xlsx tal cual). Sin la tabla, las secciones de catálogo (HSS, W…) se dibujan pero no tienen peso.
-          Sube los decimales de la columna Area en la tabla de ETABS si necesitas más exactitud.</p>
+        <h2>2. Bibliotecas de perfiles (una sola vez)</h2>
+        <p class="nota">El <b>.e2k</b> solo trae el nombre de los perfiles de catálogo (p. ej. <code>HSS8X8X1/4</code>, archivo <code>AISC14</code>). Su área está en la biblioteca de tu instalación de ETABS:
+          carpeta <code>C:\Program Files\Computers and Structures\ETABS 23\Property Libraries</code> (el nombre es el que aparece en <code>FILE</code> del .e2k, p. ej. <code>AISC14.xml</code>).
+          Cárgala una vez; se guarda en este navegador y se usa sola. Con ella no necesitas exportar la tabla de Excel.</p>
+        <input id="bibliotecas" type="file" accept=".xml" multiple>
+        <ul id="lista-bibliotecas" class="nota"></ul>
+      </div>
+
+      <div class="bloque-form">
+        <h2>3. Modelos</h2>
+        <p class="nota">Por cada modelo: el <b>.e2k</b> (File → Export → ETABS .e2k File) y, solo si el modelo tiene perfiles que no están en
+          las bibliotecas (secciones propias o de otra norma), la tabla de propiedades de secciones de frame:
+          <b>Display → Show Tables → Model Definition → Section Properties → Frame Section Properties</b>
+          y luego <b>File → Export → Excel</b> (sirve el .xlsx tal cual).</p>
         <div id="modelos"></div>
         <button type="button" id="agregar" class="btn sec">Agregar otro modelo</button>
       </div>
 
       <div class="bloque-form">
-        <h2>3. Acceso</h2>
+        <h2>4. Acceso</h2>
         <div class="dos">
           <div class="campo">
             <label for="idp">Identificador del enlace</label>

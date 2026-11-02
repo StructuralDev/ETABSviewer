@@ -155,8 +155,9 @@ function clasificaMaterial(tipo) {
  * @param {object} e2k   resultado de parsearE2k
  * @param {object} [opc]
  * @param {string} [opc.nombre]
- * @param {Object<string,number>} [opc.areaSeccion_m2] áreas exactas por sección (m²), p. ej. de la tabla
- *        "Frame Section Properties" de ETABS; sustituyen al cálculo con dimensiones nominales.
+ * @param {Object} [opc.tablaSecciones] tabla "Frame Section Properties" de ETABS (ver tabla.js), por nombre de sección
+ * @param {Object<string,{perfiles:Object}>} [opc.bibliotecas] bibliotecas de perfiles de ETABS (ver biblioteca.js)
+ *        por nombre de archivo (p. ej. AISC14). Para secciones de catálogo, el área sale de aquí.
  */
 export function construirModelo(e2k, opc = {}) {
   const avisos = [];
@@ -205,9 +206,13 @@ export function construirModelo(e2k, opc = {}) {
   // Secciones de frame. Las de catálogo (AISC...) no traen dimensiones ni área en el
   // .e2k: se completan con la tabla "Frame Section Properties" de ETABS (opc.tablaSecciones).
   const tabla = opc.tablaSecciones ?? {};
+  const bibliotecas = Object.fromEntries(Object.entries(opc.bibliotecas ?? {}).map(([k, v]) => [k.toUpperCase(), v]));
   const secciones = {};
   for (const [nombre, s] of Object.entries(e2k.secciones)) {
-    const t = tabla[nombre] ?? null;
+    // Sección de catálogo: el .e2k trae solo el nombre del perfil; el área está en la biblioteca de ETABS.
+    const sinDimensiones = !['D', 'B', 'BF', 'TF', 'TW'].some((k) => typeof s[k] === 'number');
+    const delCatalogo = sinDimensiones ? bibliotecas[String(s.FILE ?? '').toUpperCase()]?.perfiles?.[s.SHAPE] ?? null : null;
+    const t = delCatalogo ?? tabla[nombre] ?? null;
     const forma = String(t?.forma || s.SHAPE || '');
     const dim = {};
     for (const k of ['D', 'B', 'BF', 'TF', 'TW']) if (typeof s[k] === 'number') dim[k] = m(s[k]);
@@ -222,8 +227,8 @@ export function construirModelo(e2k, opc = {}) {
     if (perfil && !perfil.contorno.flat().every(Number.isFinite)) perfil = null;
     let origenArea = area === null ? null : 'dimensiones';
     if (typeof t?.area_m2 === 'number' && t.area_m2 > 0) {
-      area = t.area_m2; // área exacta de ETABS (incluye radios de acuerdo)
-      origenArea = 'tabla';
+      area = t.area_m2; // área de ETABS (incluye radios de acuerdo)
+      origenArea = delCatalogo ? 'biblioteca' : 'tabla';
     }
     if (perfil === null) {
       // Solo para dibujar: perfil de catálogo por nombre o rectángulo envolvente.
@@ -233,7 +238,10 @@ export function construirModelo(e2k, opc = {}) {
     if (area === null || !Number.isFinite(area) || area <= 0) {
       area = null;
       origenArea = null;
-      avisos.push(`Sección "${nombre}": sin área (falta la tabla Frame Section Properties o la forma no está soportada); se dibuja sin peso ni volumen.`);
+      const pista = sinDimensiones && s.FILE
+        ? `carga la biblioteca "${s.FILE}" (ETABS, carpeta Property Libraries) o la tabla Frame Section Properties`
+        : 'falta la tabla Frame Section Properties o la forma no está soportada';
+      avisos.push(`Sección "${nombre}": sin área (${pista}); se dibuja sin peso ni volumen.`);
     }
     secciones[nombre] = {
       material: t?.material || s.MATERIAL || null,

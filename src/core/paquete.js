@@ -12,9 +12,10 @@ export class ErrorPaquete extends Error {}
  * @param {string} nombre nombre del paquete (cliente o proyecto)
  * @param {Array<{nombre:string, e2k:string, tabla?:string, hojasTabla?:Array<{nombre:string,filas:string[][]}>, unidadTabla?:string}>} entradas
  *        la tabla de secciones viene como texto (`tabla`) o como hojas de un .xlsx (`hojasTabla`)
+ * @param {Object} [bibliotecas] bibliotecas de perfiles ya leídas, por nombre de archivo (ver biblioteca.js)
  * @returns {{nombre:string, modelos:object[]}}
  */
-export function construirPaquete(nombre, entradas) {
+export function construirPaquete(nombre, entradas, bibliotecas = {}) {
   if (!String(nombre ?? '').trim()) throw new ErrorPaquete('Falta el nombre del paquete.');
   if (!Array.isArray(entradas) || entradas.length === 0) throw new ErrorPaquete('Agrega al menos un modelo.');
   const modelos = entradas.map((en, k) => {
@@ -24,7 +25,7 @@ export function construirPaquete(nombre, entradas) {
       const tablaSecciones = en.hojasTabla
         ? parsearTablaDeHojas(en.hojasTabla, unidad)
         : en.tabla ? parsearTablaSecciones(en.tabla, unidad) : undefined;
-      return construirModelo(parsearE2k(en.e2k), { nombre: etiqueta, tablaSecciones });
+      return construirModelo(parsearE2k(en.e2k), { nombre: etiqueta, tablaSecciones, bibliotecas });
     } catch (e) {
       throw new ErrorPaquete(`${etiqueta}: ${e.message}`);
     }

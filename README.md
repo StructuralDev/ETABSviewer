@@ -9,9 +9,10 @@ Al seleccionar uno o varios elementos muestra su geometría y sus cantidades: **
 ## Qué se exporta desde ETABS
 
 1. **`.e2k`** de cada modelo: `File → Export → ETABS .e2k File`. Trae geometría, pisos, materiales y espesores.
-2. **Tabla de propiedades de secciones de frame** (solo para el peso del acero): `Display → Show Tables → Model Definition → Section Properties → Frame Section Properties`, y luego `File → Export → Excel`. El `.xlsx` se carga tal cual (también sirve CSV/texto).
-   El `.e2k` **no** trae el área de las secciones de catálogo (HSS, W, etc.); sin esta tabla esas secciones se dibujan pero no tienen peso.
-   ETABS redondea el área a los decimales de la tabla (p. ej. 0.1 cm²): sube los decimales de la columna Area si necesitas más exactitud.
+2. **Biblioteca de perfiles** (solo para el peso del acero de perfiles de catálogo): el `.e2k` trae el nombre del perfil (p. ej. `HSS8X8X1/4`) y el archivo (`FILE "AISC14"`), pero no su área. El área está en la carpeta `Property Libraries` de tu instalación de ETABS (p. ej. `C:\Program Files\Computers and Structures\ETABS 23\Property Libraries\AISC14.xml`). Se carga **una sola vez** en el convertidor (queda guardada en el navegador) y es la misma que usa ETABS. No hace falta exportar tablas de Excel.
+3. **Tabla `Frame Section Properties`** (opcional): solo para perfiles que no estén en las bibliotecas (secciones propias, otras normas). `Display → Show Tables → Model Definition → Section Properties → Frame Section Properties`, y luego `File → Export → Excel`. El `.xlsx` se carga tal cual (también sirve CSV). ETABS redondea el área a los decimales de la tabla (p. ej. 0.1 cm²): la biblioteca es más exacta.
+
+Orden de prioridad del área: dimensiones del propio `.e2k` → biblioteca → tabla.
 
 Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archivo).
 
@@ -19,19 +20,24 @@ Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archiv
 
 | Acción | Cómo |
 |---|---|
-| Seleccionar un elemento | Clic |
-| Seleccionar varios | Arrastrar con el botón izquierdo (caja) |
+| Seleccionar un elemento | Clic (un clic en vacío no cambia la selección) |
+| Caja **izquierda → derecha** (azul, continua) | Selecciona solo lo que queda **completamente** dentro, como en CAD |
+| Caja **derecha → izquierda** (verde, punteada) | Selecciona todo lo que la **toque**, aunque sea en parte |
 | Sumar o quitar de la selección | Ctrl, Cmd o Mayús + clic o caja |
+| Quitar la selección | Tecla **Esc** |
 | Zoom | Rueda |
 | Desplazar (pan) | Arrastrar con la rueda (botón central); también botón derecho |
 | Girar | Mayús + arrastrar con la rueda; en pantalla táctil, dos dedos |
+| Ancho del panel | Arrastrar el divisor entre la vista y el panel |
+
+**Varios modelos.** Si el paquete trae más de un modelo, aparecen **pestañas** bajo la barra superior. Un enlace puede abrir uno directamente con `&m=<n>` (0 es el primero; p. ej. `?c=<id>&m=1`). Cada cliente es un paquete distinto (otro enlace y otra contraseña).
 
 **Vistas** (barra superior): `3D`; `Planta` (elige un piso: muestra los objetos asignados a ese piso, vista cenital con el norte, +Y, arriba); `Alzado` (elige un eje de la cuadrícula de ETABS: muestra los objetos contenidos en su plano, mirando desde −Y para ejes numéricos y desde +X para ejes con letra). Planta y alzado usan cámara ortográfica y dibujan los ejes con sus burbujas.
 
 ## Publicar un paquete para un cliente
 
 1. Abre `convertidor.html` (en local: `python -m http.server 8000` y entra a `http://localhost:8000/convertidor.html`).
-2. Captura el nombre del paquete, agrega uno o varios modelos (`.e2k` + tabla) y genera la contraseña.
+2. Carga las bibliotecas de perfiles (una vez), captura el nombre del paquete, agrega uno o varios modelos (`.e2k`, y tabla solo si hace falta) y genera la contraseña.
 3. Se descarga `<identificador>.enc.json`. Cópialo a `models/` y súbelo por pull request.
 4. El enlace es `https://<usuario>.github.io/<repositorio>/?c=<identificador>`.
 5. En Google Sites: `Insertar → Incrustar → Por URL` y pega ese enlace. Comparte la contraseña por otro canal.

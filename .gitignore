@@ -41,3 +41,6 @@ Thumbs.db
 entrada/
 !tests/fixtures/*.e2k
 models/prueba-local.enc.json
+
+# Modelos y bibliotecas de ejemplo del equipo (datos de proyectos, no se versionan)
+docs/

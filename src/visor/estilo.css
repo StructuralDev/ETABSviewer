@@ -36,11 +36,10 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
 .error { background: var(--err-bg); border: 1px solid var(--err); color: var(--alba-danger-200); border-radius: var(--alba-radio-boton); padding: 8px 12px; margin-top: 12px; }
 
 /* ---------- Aplicación ---------- */
-#app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+#app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; }
 header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 16px; background: var(--side); border-bottom: 1px solid var(--border); }
 header img { height: 22px; }
 #titulo { font: 700 16px/1.2 var(--font); margin-right: auto; overflow-wrap: anywhere; }
-#modelo-sel { width: auto; min-width: 160px; }
 .grupo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--alba-radio-boton); overflow: hidden; }
 .grupo button { background: var(--alt); color: var(--text2); border: 0; border-right: 1px solid var(--border); height: 31px; padding: 0 12px; font: 500 13px var(--font); cursor: pointer; }
 .grupo button:last-child { border-right: 0; }
@@ -51,10 +50,21 @@ header img { height: 22px; }
 .grupo select.activo { background: var(--hover); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 .grupo button[aria-pressed=true] { background: var(--hover); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 
-main { display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
+main { display: grid; grid-template-columns: 1fr 6px var(--panel-w, 460px); min-height: 0; }
+#divisor { cursor: col-resize; background: var(--border); touch-action: none; }
+#divisor:hover, #divisor.arrastrando { background: var(--accent); }
+
+/* Pestañas de modelos (ESTILO.md: texto neutral-300, la activa en primary-300 con subrayado) */
+#pestanas { display: flex; gap: 4px; overflow-x: auto; padding: 0 16px; background: var(--surf); border-bottom: 1px solid var(--border); }
+#pestanas button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text2); font: 500 13px var(--font); padding: 10px 12px; cursor: pointer; white-space: nowrap; }
+#pestanas button:hover { color: var(--text); }
+#pestanas button[aria-selected=true] { color: var(--accent); border-bottom-color: var(--accent); }
 #lienzo { position: relative; min-height: 0; overflow: hidden; }
 #lienzo canvas { display: block; width: 100%; height: 100%; }
-#caja { position: absolute; display: none; border: 1px dashed var(--accent); background: rgb(44 143 208 / 15%); pointer-events: none; }
+#caja { position: absolute; display: none; pointer-events: none; }
+/* Como en CAD: ventana (izq → der) azul y continua; cruce (der → izq) verde y punteada. */
+#caja.ventana { border: 1px solid var(--accent); background: rgb(44 143 208 / 15%); }
+#caja.cruce { border: 1px dashed var(--ok); background: rgb(120 190 75 / 15%); }
 aside { background: var(--surf); border-left: 1px solid var(--border); overflow-y: auto; padding: 16px; }
 
 .tarjeta { border: 1px solid var(--border); border-radius: var(--alba-radio-boton); background: var(--alt); padding: 4px 12px; margin-bottom: 8px; }
@@ -70,14 +80,17 @@ details { margin-top: 12px; color: var(--text2); font-size: 12px; }
 summary { cursor: pointer; }
 details ul { padding-left: 16px; }
 
-.lista { max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--alba-radio-boton); }
-table { border-collapse: collapse; width: 100%; font-size: 12px; }
-th { position: sticky; top: 0; background: var(--side); color: var(--text2); font-weight: 500; text-align: left; padding: 6px 8px; }
-td { padding: 5px 8px; border-top: 1px solid var(--hover); }
+.lista { max-height: 50vh; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); border-radius: var(--alba-radio-boton); }
+/* Tabla de selección: columnas fijas que se ajustan al ancho del panel (sin barra horizontal). */
+table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 12px; }
+th:nth-child(1) { width: 27%; } th:nth-child(2) { width: 25%; } th:nth-child(3) { width: 16%; } th:nth-child(4) { width: 16%; } th:nth-child(5) { width: 16%; }
+th { position: sticky; top: 0; background: var(--side); color: var(--text2); font-weight: 500; text-align: left; padding: 6px 6px; }
+td { padding: 5px 6px; border-top: 1px solid var(--hover); overflow-wrap: anywhere; }
 tbody tr:nth-child(even) { background: var(--alt); }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 760px) {
   main { grid-template-columns: 1fr; grid-template-rows: 1fr 42%; }
+  #divisor { display: none; }
   aside { border-left: 0; border-top: 1px solid var(--border); }
 }
