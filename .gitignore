@@ -1,0 +1,46 @@
+# Plantilla del harness equipo-innovation. Copiar al proyecto como ".gitignore" y quitar lo que no aplique.
+
+# Secretos y configuración local: nunca se versionan
+.env
+.env.*
+!.env.example
+
+# Binarios de ingeniería (versiona el código fuente asociado; ver CLAUDE.md)
+*.xlsm
+*.rvt
+*.edb
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+
+# Modelos originales de ETABS y exportaciones (nunca se versionan; solo se publica el .enc.json)
+*.e2k
+*.EDB
+*.xlsx
+*.xls
+*.bak
+entrada/
+!tests/fixtures/*.e2k
+models/prueba-local.enc.json
+
+# Modelos y bibliotecas de ejemplo del equipo (datos de proyectos, no se versionan)
+docs/

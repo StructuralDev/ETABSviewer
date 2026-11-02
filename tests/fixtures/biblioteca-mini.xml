@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<PROPERTY_FILE xmlns="http://www.csiberkeley.com">
+  <CONTROL>
+      <FILE_ID>CSI Frame Properties</FILE_ID>
+      <DESCRIPTION>AISC14 Section Database</DESCRIPTION>
+      <LENGTH_UNITS>in</LENGTH_UNITS>
+  </CONTROL>
+  <STEEL_BOX>
+      <LABEL>HSS8X8X1/4</LABEL>
+      <EDI_STD>HSS8X8X.250</EDI_STD>
+      <DESIGNATION>B</DESIGNATION>
+      <HT>8</HT>
+      <B>8</B>
+      <TF>0.233</TF>
+      <TW>0.233</TW>
+      <A>7.1</A>
+      <I33>70.7</I33>
+  </STEEL_BOX>
+  <STEEL_BOX>
+      <LABEL>HSS3X3X1/8</LABEL>
+      <EDI_STD>HSS3X3X.125</EDI_STD>
+      <DESIGNATION>B</DESIGNATION>
+      <HT>3</HT>
+      <B>3</B>
+      <TF>0.116</TF>
+      <TW>0.116</TW>
+      <A>1.3</A>
+      <I33>1.78</I33>
+  </STEEL_BOX>
+  <STEEL_I_SECTION>
+      <LABEL>W44X335</LABEL>
+      <D>44</D>
+      <BF>15.9</BF>
+      <TF>1.77</TF>
+      <TW>1.03</TW>
+      <A>98.5</A>
+  </STEEL_I_SECTION>
+</PROPERTY_FILE>

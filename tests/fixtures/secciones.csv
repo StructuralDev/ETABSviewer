@@ -1,0 +1,4 @@
+Name,Material,Shape,t3,t2,tf,tw,Area
+,,,m,m,m,m,m²
+HSS8X8X1/4,A500GrB46,Steel Tube,0.2032,0.2032,0.0059,0.0059,0.004
+HSS3X3X1/8,A500GrB46,Steel Tube,0.0762,0.0762,0.003,0.003,0.001

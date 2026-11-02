@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Convertidor de modelos ETABS</title>
+  <link rel="stylesheet" href="src/visor/estilo.css">
+</head>
+<body>
+  <div class="pagina">
+    <img class="logo-conv" src="design/logo_alba.svg" alt="ALBA">
+    <h1>Convertidor de modelos ETABS</h1>
+    <p>Uso interno. Todo se procesa en este navegador: los archivos originales no se suben a ningún lado.</p>
+
+    <form id="forma" autocomplete="off">
+      <div class="bloque-form">
+        <h2>1. Paquete (cliente o proyecto)</h2>
+        <div class="campo">
+          <label for="nombre">Nombre que verá el cliente</label>
+          <input id="nombre" type="text" placeholder="Ej. Torre de apuntalamiento TPO" required>
+        </div>
+      </div>
+
+      <div class="bloque-form">
+        <h2>2. Bibliotecas de perfiles (opcional)</h2>
+        <p class="nota">El <b>.e2k</b> solo trae el nombre de los perfiles de catálogo (p. ej. <code>HSS8X8X1/4</code>, archivo <code>AISC14</code>); su área está en la biblioteca de ETABS.
+          Las bibliotecas AISC 14, 15 y 16 (y sus versiones métricas) <b>ya vienen incluidas</b> y se usan solas según el <code>FILE</code> del .e2k.
+          Carga aquí una biblioteca propia solo si tu modelo usa otra (<code>.xml</code> de la carpeta <code>Property Libraries</code> de ETABS); se guarda en este navegador y tiene prioridad sobre la incluida.</p>
+        <input id="bibliotecas" type="file" accept=".xml" multiple>
+        <ul id="lista-bibliotecas" class="nota"></ul>
+      </div>
+
+      <div class="bloque-form">
+        <h2>3. Modelos</h2>
+        <p class="nota">Por cada modelo: el <b>.e2k</b> (File → Export → ETABS .e2k File) y, solo si el modelo tiene perfiles que no están en
+          las bibliotecas (secciones propias o de otra norma), la tabla de propiedades de secciones de frame:
+          <b>Display → Show Tables → Model Definition → Section Properties → Frame Section Properties</b>
+          y luego <b>File → Export → Excel</b> (sirve el .xlsx tal cual).</p>
+        <div id="modelos"></div>
+        <button type="button" id="agregar" class="btn sec">Agregar otro modelo</button>
+      </div>
+
+      <div class="bloque-form">
+        <h2>4. Acceso</h2>
+        <div class="dos">
+          <div class="campo">
+            <label for="idp">Identificador del enlace</label>
+            <input id="idp" type="text" readonly>
+          </div>
+          <div class="campo">
+            <label for="clave">Contraseña (mín. 14 caracteres)</label>
+            <div class="fila-clave">
+              <input id="clave" type="text" required minlength="14">
+              <button type="button" id="generar" class="btn sec">Generar</button>
+            </div>
+          </div>
+        </div>
+        <p class="nota">Usa una contraseña distinta por cliente. El repositorio es público: la contraseña es lo único que protege los modelos, así que debe ser larga. Compártela por un canal distinto al del enlace.</p>
+      </div>
+
+      <button id="crear" class="btn" type="submit">Generar paquete cifrado</button>
+    </form>
+
+    <div id="error" class="error" role="alert" hidden></div>
+    <section id="resultado" class="bloque-form resultado" hidden></section>
+  </div>
+  <script type="module" src="src/convertidor/principal.js"></script>
+</body>
+</html>
