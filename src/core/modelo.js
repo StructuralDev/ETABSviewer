@@ -185,6 +185,7 @@ export function construirModelo(e2k, opc = {}) {
     return elev[idxPiso[nombre]];
   };
   const zNiveles = (nombre, nNiveles, ctx) => {
+    zPiso(nombre, ctx); // valida que el piso exista
     const k = Math.min(idxPiso[nombre] + nNiveles, pisosTop.length - 1);
     if (idxPiso[nombre] + nNiveles > pisosTop.length - 1) {
       avisos.push(`${ctx}: baja más pisos de los que existen; se limitó a la base.`);
@@ -287,20 +288,14 @@ export function construirModelo(e2k, opc = {}) {
       const pi = e2k.puntos[ln.i], pj = e2k.puntos[ln.j];
       if (!pi || !pj) { avisos.push(`Línea "${id}" con punto inexistente; omitida.`); continue; }
       const ctx = `Línea "${id}"`;
-      let zi, zj;
-      if (ln.tipo === 'COLUMN') {
-        zj = zPiso(a.piso, ctx);
-        zi = zNiveles(a.piso, Math.max(1, ln.nPisos || 1), ctx);
-      } else if (ln.tipo === 'BRACE') {
-        // SUPUESTO por validar con ETABS: el extremo I está en el nivel inferior y el J en el
-        // superior (en el modelo de prueba las diagonales forman un zigzag continuo).
-        zj = zPiso(a.piso, ctx);
-        zi = zNiveles(a.piso, Math.max(1, ln.nPisos || 1), ctx);
-      } else {
-        zi = zj = zPiso(a.piso, ctx);
-      }
-      const I = [m(pi.x), m(pi.y), pi.z === null ? zi : m(pi.z)];
-      const J = [m(pj.x), m(pj.y), pj.z === null ? zj : m(pj.z)];
+      // Extremo J en el piso asignado; extremo I `nPisos` pisos más abajo (0 en vigas). El tercer
+      // número del punto es un desfase vertical sobre el piso, no una cota (ver e2k.js).
+      // SUPUESTO por validar con ETABS en contravientos: el extremo I es el inferior.
+      const piso = a.piso;
+      const zi = zNiveles(piso, ln.nPisos || 0, ctx) + m(pi.z ?? 0);
+      const zj = zPiso(piso, ctx) + m(pj.z ?? 0);
+      const I = [m(pi.x), m(pi.y), zi];
+      const J = [m(pj.x), m(pj.y), zj];
       const L = norma(resta(J, I));
       if (L < 1e-9) { avisos.push(`${ctx}: longitud nula; omitida.`); continue; }
       const sec = secciones[a.SECTION];
@@ -341,19 +336,11 @@ export function construirModelo(e2k, opc = {}) {
         xy.push([m(pt.x), m(pt.y)]);
       }
       if (xy.length < 3) continue;
-      let pts;
-      if (ar.tipo === 'PANEL') {
-        // Muro: los puntos repetidos (arriba/abajo) se reducen a los vértices únicos en planta.
-        const unicos = [];
-        for (const q of xy) if (!unicos.some((u) => Math.hypot(u[0] - q[0], u[1] - q[1]) < 1e-6)) unicos.push(q);
-        if (unicos.length !== 2) { avisos.push(`${ctx}: muro con ${unicos.length} vértices en planta; no soportado, omitido.`); continue; }
-        const zt = zPiso(a.piso, ctx), zb = zNiveles(a.piso, 1, ctx);
-        const [p, q] = unicos;
-        pts = [[p[0], p[1], zb], [q[0], q[1], zb], [q[0], q[1], zt], [p[0], p[1], zt]];
-      } else {
-        const z = zPiso(a.piso, ctx);
-        pts = xy.map(([x, y]) => [x, y, z]);
-      }
+      // Cada esquina está en el piso asignado o más abajo (muros: la base), más el desfase de su punto.
+      const pts = xy.map(([x, y], k) => {
+        const z = zNiveles(a.piso, ar.desfases?.[k] ?? 0, ctx) + m(e2k.puntos[ar.puntos[k]].z ?? 0);
+        return [x, y, z];
+      });
       const prop = propsArea[a.SECTION];
       if (!prop) avisos.push(`${ctx}: propiedad "${a.SECTION}" desconocida.`);
       const A = areaPoligono3d(pts);

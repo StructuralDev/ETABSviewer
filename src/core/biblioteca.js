@@ -55,3 +55,26 @@ export function parsearBibliotecaCsi(xml) {
   if (Object.keys(perfiles).length === 0) throw new ErrorBiblioteca('La biblioteca no contiene perfiles de acero.');
   return { nombre: campo(xml, 'DESCRIPTION') ?? '', perfiles };
 }
+
+// ---------- Formato compacto (el que se publica en data/perfiles/) ----------
+// { v: 1, nombre, formas: [...], p: { LABEL: [indiceForma, area_m2, D, B, TF, TW] } }
+
+const FORMAS = Object.values(TIPOS).map((t) => t.forma);
+const r = (x, d) => (x === null ? null : Number(x.toFixed(d)));
+
+export function compactarBiblioteca(b) {
+  const p = {};
+  for (const [etiqueta, f] of Object.entries(b.perfiles)) {
+    p[etiqueta] = [FORMAS.indexOf(f.forma), r(f.area_m2, 9), r(f.D, 5), r(f.B, 5), r(f.TF, 5), r(f.TW, 5)];
+  }
+  return { v: 1, nombre: b.nombre, formas: FORMAS, p };
+}
+
+export function expandirBiblioteca(c) {
+  if (!c || c.v !== 1 || typeof c.p !== 'object') throw new ErrorBiblioteca('Biblioteca compacta no reconocida.');
+  const perfiles = {};
+  for (const [etiqueta, [i, area_m2, D, B, TF, TW]] of Object.entries(c.p)) {
+    perfiles[etiqueta] = { forma: c.formas[i], area_m2, D, B, TF, TW };
+  }
+  return { nombre: c.nombre ?? '', perfiles };
+}

@@ -1,0 +1,55 @@
+# Publica el visor en GitHub Pages cuando se hace merge a main.
+# Solo se publica lo que el cliente necesita: no van tests, docs ni el convertidor (herramienta interna).
+name: Publicar visor
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/
+
+  construir:
+    needs: pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Armar el sitio
+        run: |
+          mkdir _sitio
+          cp index.html _sitio/
+          cp -r src design vendor models _sitio/
+          rm -rf _sitio/src/convertidor
+          touch _sitio/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sitio
+
+  desplegar:
+    needs: construir
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v4

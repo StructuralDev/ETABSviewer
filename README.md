@@ -34,6 +34,8 @@ Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archiv
 
 **Vistas** (barra superior): `3D`; `Planta` (elige un piso: muestra los objetos asignados a ese piso, vista cenital con el norte, +Y, arriba); `Alzado` (elige un eje de la cuadrícula de ETABS: muestra los objetos contenidos en su plano, mirando desde −Y para ejes numéricos y desde +X para ejes con letra). Planta y alzado usan cámara ortográfica y dibujan los ejes con sus burbujas.
 
+Despliegue y seguridad: ver [DESPLIEGUE.md](DESPLIEGUE.md).
+
 ## Publicar un paquete para un cliente
 
 1. Abre `convertidor.html` (en local: `python -m http.server 8000` y entra a `http://localhost:8000/convertidor.html`).

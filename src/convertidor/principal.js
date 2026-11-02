@@ -1,9 +1,9 @@
 // Convertidor: lee .e2k (y tabla de secciones), construye los modelos y descarga el paquete cifrado.
-import { construirPaquete, sellarPaquete, generarIdPaquete, generarContrasena } from '../core/paquete.js';
+import { construirPaquete, sellarPaquete, generarIdPaquete, generarContrasena, bibliotecasUsadas } from '../core/paquete.js';
 import { resumir } from '../core/resumen.js';
 import { leerXlsx } from '../core/xlsx.js';
 import { parsearBibliotecaCsi } from '../core/biblioteca.js';
-import { guardarBiblioteca, borrarBiblioteca, leerBibliotecas } from './bibliotecas.js';
+import { guardarBiblioteca, borrarBiblioteca, leerBibliotecas, obtenerBibliotecas } from './bibliotecas.js';
 
 const $ = (id) => document.getElementById(id);
 const UNIDADES_TABLA = ['M', 'CM', 'MM', 'IN', 'FT'];
@@ -84,7 +84,8 @@ $('forma').addEventListener('submit', async (ev) => {
         unidadTabla: f.querySelector('[data-unidad]').value,
       });
     }
-    const paquete = construirPaquete($('nombre').value, entradas, await leerBibliotecas());
+    const usadas = [...new Set(entradas.flatMap((en) => bibliotecasUsadas(en.e2k)))];
+    const paquete = construirPaquete($('nombre').value, entradas, await obtenerBibliotecas(usadas));
     const sobre = await sellarPaquete(paquete, $('clave').value);
     const archivo = `${$('idp').value}.enc.json`;
     descargar(archivo, sobre);
@@ -124,7 +125,7 @@ async function pintarBibliotecas() {
     ? [nodo('li', {}, 'Aún no hay bibliotecas cargadas.')]
     : Object.entries(todas).map(([nombre, b]) => nodo('li', {},
       `${nombre} · ${Object.keys(b.perfiles).length} perfiles `,
-      nodo('button', { type: 'button', class: 'btn sec', 'data-borrar': nombre, style: 'height:24px;padding:0 8px;font-size:12px' }, 'Quitar')))));
+      nodo('button', { type: 'button', class: 'btn sec chico', 'data-borrar': nombre }, 'Quitar')))));
 }
 
 $('lista-bibliotecas').addEventListener('click', async (ev) => {

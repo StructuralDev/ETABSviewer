@@ -218,3 +218,40 @@ await prueba('tabla: unidades por fila de unidades, por parámetro y errores', a
 await prueba('densidad del acero desde TONF/m³', () => {
   cerca(real.materiales.A500GrB46.pesoVolumetrico_kgm3, GAMMA, 0.01);
 });
+
+// --- Puntos con desfase, columnas de 2 pisos y muros con pisos por esquina (sintaxis real de ETABS) ---
+// Piso Nivel 1 = 3.26 m, Nivel 2 = 6.52 m (alturas 3.26). En el .e2k, la tercera coordenada de un POINT
+// es el desfase vertical sobre el piso en que se usa; cada esquina de un muro trae los pisos que baja.
+const desf = construirModelo(parsearE2k(await leerFixture('desfases.e2k')));
+
+await prueba('viga de rampa: el punto con desfase 0.5 m sube un extremo', () => {
+  // I = (0, 0, 3.26) ; J = (5, 0, 3.26 + 0.5) -> L = √(5² + 0.5²) = √25.25 = 5.024938
+  const r1 = desf.frames.find((f) => f.id === 'R1');
+  igual(r1.i, [0, 0, 3.26]);
+  igual(r1.j, [5, 0, 3.76]);
+  cerca(r1.longitud_m, 5.024938, 6e-5);
+});
+
+await prueba('columna de 2 pisos con desfase en ambos extremos', () => {
+  // Asignada en Nivel 2, baja 2 pisos hasta Cim. z_I = 0 + 0.5 ; z_J = 6.52 + 0.5 = 7.02 ; L = 6.52 m
+  const c9 = desf.frames.find((f) => f.id === 'C9');
+  igual([c9.i[2], c9.j[2]], [0.5, 7.02]);
+  cerca(c9.longitud_m, 6.52, 1e-9);
+  // V = 0.5 × 0.5 × 6.52 = 1.63 m³
+  cerca(c9.volumen_m3, 1.63, 1e-6);
+});
+
+await prueba('muro con "1 1 0 0": base un piso abajo, corona en el piso asignado', () => {
+  // Esquinas 1 y 2 en Nivel 1 (3.26); esquinas 3 y 4 en Nivel 2 (6.52). A = 2.5 × 3.26 = 8.15 m² ; V = 8.15 × 0.2 = 1.63 m³
+  const w = desf.areas.find((a) => a.id === 'W9');
+  igual(w.pts.map((p) => p[2]), [3.26, 3.26, 6.52, 6.52]);
+  cerca(w.area_m2, 8.15, 1e-6);
+  cerca(w.volumen_m3, 1.63, 1e-6);
+});
+
+await prueba('losa inclinada (rampa): el área es la real, no la proyectada', () => {
+  // Esquinas 8 y 9 suben 0.5 m: 2.5 m de ancho × √(3.5² + 0.5²) = 2.5 × 3.535534 = 8.838835 m² ; V = × 0.1 = 0.8838835 m³
+  const f = desf.areas.find((a) => a.id === 'F2');
+  cerca(f.area_m2, 8.838835, 1e-5);
+  cerca(f.volumen_m3, 0.8838835, 1e-5);
+});

@@ -51,3 +51,9 @@ export function generarContrasena() {
   const c = Array.from(bytes, (b) => alfabeto[b % alfabeto.length]);
   return [0, 4, 8, 12].map((i) => c.slice(i, i + 4).join('')).join('-');
 }
+
+// Nombres de las bibliotecas de perfiles que usa un .e2k (valores de FILE en $ FRAME SECTIONS).
+export function bibliotecasUsadas(textoE2k) {
+  const e2k = parsearE2k(textoE2k);
+  return [...new Set(Object.values(e2k.secciones).map((s) => s.FILE).filter(Boolean).map((f) => String(f).toUpperCase()))];
+}

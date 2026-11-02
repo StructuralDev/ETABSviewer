@@ -2,7 +2,7 @@
 // El extracto de la biblioteca copia valores reales de AISC14.xml (ETABS 23): HSS8X8X1/4 A = 7.1 in²,
 // HSS3X3X1/8 A = 1.3 in². Esperados calculados a mano: 1 in² = 0.0254² m² = 6.4516e-4 m².
 import { prueba, cerca, igual, lanza, leerFixture } from './lib.js';
-import { parsearBibliotecaCsi } from '../src/core/biblioteca.js';
+import { parsearBibliotecaCsi, compactarBiblioteca, expandirBiblioteca } from '../src/core/biblioteca.js';
 import { parsearE2k } from '../src/core/e2k.js';
 import { construirModelo } from '../src/core/modelo.js';
 
@@ -45,4 +45,23 @@ await prueba('claves de biblioteca sin distinguir mayúsculas y errores claros',
   cerca(m.totales.peso_acero_kg > 0 ? 1 : 0, 1, 0);
   await lanza(() => parsearBibliotecaCsi('<html></html>'), /PROPERTY_FILE/);
   await lanza(() => parsearBibliotecaCsi('<PROPERTY_FILE><CONTROL></CONTROL></PROPERTY_FILE>'), /LENGTH_UNITS/);
+});
+
+await prueba('formato compacto: ida y vuelta conserva área (1e-9 m²) y dimensiones (1e-5 m)', () => {
+  const c = compactarBiblioteca(bib);
+  const de = expandirBiblioteca(JSON.parse(JSON.stringify(c)));
+  for (const [k, p] of Object.entries(bib.perfiles)) {
+    cerca(de.perfiles[k].area_m2, p.area_m2, 1e-9, `${k} área`);
+    cerca(de.perfiles[k].D, p.D, 1e-5, `${k} D`);
+    igual(de.perfiles[k].forma, p.forma, `${k} forma`);
+  }
+  igual(de.perfiles['W44X335'].B !== null, true);
+});
+
+await prueba('formato compacto: valores faltantes se conservan como null y datos inválidos fallan', async () => {
+  const pipe = parsearBibliotecaCsi('<PROPERTY_FILE><CONTROL><LENGTH_UNITS>mm</LENGTH_UNITS></CONTROL><STEEL_PIPE><LABEL>P1</LABEL><OD>100</OD><TDES>5</TDES><A>1500</A></STEEL_PIPE></PROPERTY_FILE>');
+  const p = expandirBiblioteca(compactarBiblioteca(pipe)).perfiles.P1;
+  cerca(p.area_m2, 0.0015, 1e-12); // 1500 mm² = 1.5e-3 m²
+  igual([p.B, p.TF], [null, null]);
+  await lanza(() => expandirBiblioteca({ v: 9 }), /no reconocida/);
 });

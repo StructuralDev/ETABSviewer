@@ -8,6 +8,9 @@
 //   - texto entre comillas dobles; el piso base trae ELEV (no ELEVATION)
 //   - un LINEASSIGN/AREAASSIGN por cada piso donde aparece el objeto
 //   - las secciones de catálogo (p. ej. HSS8X8X1/4) NO traen dimensiones ni área
+//   - POINT con tercer número = desfase vertical (m) sobre el piso en que se usa el punto, no cota absoluta
+//   - LINE: el último número son los pisos que baja el extremo I (columnas y contravientos);
+//     AREA: tras los puntos vienen los pisos que baja cada esquina
 
 export class ErrorE2k extends Error {}
 
@@ -121,6 +124,9 @@ export function parsearE2k(texto) {
       m.areas[t[1].v] = {
         tipo: t[2].v.toUpperCase(), // FLOOR | PANEL | RAMP
         puntos: t.slice(4, 4 + n).map((p) => p.v),
+        // Pisos que baja cada esquina respecto al piso asignado (muros: "1 1 0 0" = las dos
+        // primeras esquinas están un piso más abajo).
+        desfases: t.slice(4 + n, 4 + 2 * n).map((d) => Number(d.v) || 0),
       };
     } else if (seccion.startsWith('LINE ASSIGNS') && palabra === 'LINEASSIGN') {
       (m.asignLineas[t[1].v] ??= []).push({ piso: t[2].v, ...paresClaveValor(t, 3) });

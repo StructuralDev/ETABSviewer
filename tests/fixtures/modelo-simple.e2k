@@ -32,7 +32,7 @@ $ LINE CONNECTIVITIES
 
 $ AREA CONNECTIVITIES
   AREA  "F1"  FLOOR  4  "1"  "2"  "3"  "4"  0  0  0  0
-  AREA  "W1"  PANEL  4  "1"  "2"  "2"  "1"  0  0  0  0
+  AREA  "W1"  PANEL  4  "1"  "2"  "2"  "1"  1  1  0  0
 
 $ LINE ASSIGNS
   LINEASSIGN  "B1"  "Story1"  SECTION "W-test"  ANG 0
