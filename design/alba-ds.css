@@ -1,0 +1,117 @@
+﻿/* ALBA-ds · variables de diseño (Figma "ALBA ds", leído 2026-10-20). Ver alba-ds.tokens.json y LEEME_alba-ds.md para notas y pendientes. */
+:root {
+  /* Tokens de color (verificados) */
+  /* neutral: Fondos, superficies, bordes, divisores y texto */
+  --alba-neutral-0: #FEFEFF;
+  --alba-neutral-100: #F8F8FE;
+  --alba-neutral-200: #D5D5E3;
+  --alba-neutral-300: #9E9EB0;
+  --alba-neutral-400: #848497;
+  --alba-neutral-500: #545464;
+  --alba-neutral-600: #3D3D4A;
+  --alba-neutral-700: #272731;
+  --alba-neutral-800: #1C1C23;
+  --alba-neutral-900: #1A1C24;
+  /* primary: Marca y acciones principales (el botón primario usa primary-400) */
+  --alba-primary-100: #EDF8FF;
+  --alba-primary-200: #AFDFFF;
+  --alba-primary-300: #2C8FD0;
+  --alba-primary-400: #005994;
+  --alba-primary-500: #004C7E;
+  --alba-primary-600: #003355;
+  --alba-primary-800: #03263D;
+  /* secondary: Resaltado secundario, usar con moderación */
+  --alba-secondary-100: #FFE9E9;
+  --alba-secondary-400: #C43135;
+  --alba-secondary-500: #A21E21;
+  --alba-secondary-600: #8B1522;
+  --alba-secondary-700: #740F23;
+  --alba-secondary-800: #5D0921;
+  --alba-secondary-900: #4D0520;
+  --alba-secondary-1000: #30101A;
+  /* info: Información */
+  --alba-info-100: #F1F7FB;
+  --alba-info-200: #4BA2FF;
+  --alba-info-500: #1B7DE6;
+  --alba-info-600: #1361C5;
+  --alba-info-800: #083285;
+  --alba-info-900: #0C1D3D;
+  /* success: Éxito / estado positivo */
+  --alba-success-100: #F7FBF6;
+  --alba-success-300: #BAEF98;
+  --alba-success-500: #78BE4B;
+  --alba-success-700: #43931D;
+  --alba-success-800: #125509;
+  --alba-success-900: #103011;
+  /* warning: Advertencia */
+  --alba-warning-100: #F8F6F3;
+  --alba-warning-300: #FFDA91;
+  --alba-warning-400: #FFBE3F;
+  --alba-warning-500: #FF9F00;
+  --alba-warning-700: #B76400;
+  --alba-warning-900: #422B11;
+  /* danger: Error / acciones peligrosas */
+  --alba-danger-100: #FAF5F5;
+  --alba-danger-200: #F49D9D;
+  --alba-danger-400: #BE3F58;
+  --alba-danger-500: #941037;
+  --alba-danger-700: #6A0838;
+  --alba-danger-800: #410B22;
+
+  --alba-fondo-marco: #0E1118;
+
+  /* Tipografía */
+  --alba-font: "Inter", "Segoe UI", system-ui, sans-serif;
+  /* Escala de texto (tamaño/interlineado) */
+  --alba-t-desktop-text-xxl: bold 48px/120%;
+  --alba-t-desktop-text-xl: semibold 24px/120%;
+  --alba-t-desktop-text-l: medium 18px/120%;
+  --alba-t-desktop-text-m: regular 16px/120%;
+  --alba-t-desktop-text-m-semibold: semibold 16px/120%;
+  --alba-t-tablet-headline-1: bold 48px/110%;
+  --alba-t-tablet-headline-2: bold 32px/120%;
+  --alba-t-tablet-headline-3: bold 24px/120%;
+  --alba-t-tablet-headline-4: bold 18px/120%;
+  --alba-t-mobile-headline-1: bold 24px/120%;
+  --alba-t-mobile-headline-2: bold 20px/120%;
+  --alba-t-mobile-headline-3: bold 18px/120%;
+  --alba-t-mobile-headline-4: bold 16px/120%;
+  --alba-t-mobile-headline-5: bold 14px/120%;
+  --alba-t-mobile-label: regular 12px/120%;
+  --alba-t-mobile-input-text: regular 14px/120%;
+  --alba-t-mobile-btn-text-1: semibold 16px/120%;
+  --alba-t-mobile-btn-text-2: regular 16px/120%;
+  --alba-t-body-text-s-body: regular 14px/120%;
+  --alba-t-body-text-s-body-title: medium 14px/120%;
+  --alba-t-body-text-xs: regular 12px/120%;
+  --alba-t-body-text-xxs: regular 10px/120%;
+  --alba-t-body-body-1: regular 16px/130%;
+  --alba-t-body-body-2: regular 14px/130%;
+  --alba-t-boton-link-large: regular 20px/24px;
+  --alba-t-boton-link-normal: regular 20px/24px;
+  --alba-t-boton-link-medium: regular 16px/20px;
+  --alba-t-boton-link-small: regular 14px/16px;
+  --alba-t-boton-link-extra-small: regular 14px/16px;
+  --alba-t-campos-text-placeholder: regular 16px/24px;
+  --alba-t-campos-text-title: regular 12px/16px;
+  --alba-t-campos-text-description: regular 12px/16px;
+
+  /* Forma */
+  --alba-radio-boton: 8px;
+  --alba-radio-muestra: 16px;
+  --alba-alto-boton: 35px;
+}
+
+/* PROPUESTA de mapeo a las variables del proyecto (el diseño de Figma es oscuro; no define tema claro ni roles semánticos). Revisar antes de aplicar. */
+:root {
+  --bg: var(--alba-fondo-marco);  --app: var(--alba-fondo-marco);
+  --surf: var(--alba-neutral-900);  --alt: var(--alba-neutral-800);  --side: var(--alba-neutral-700);
+  --hover: var(--alba-neutral-600);  --sel: var(--alba-neutral-600);
+  --border: var(--alba-neutral-600);
+  --text: var(--alba-neutral-100);  --text2: var(--alba-neutral-300);  --muted: var(--alba-neutral-400);
+  --primary: var(--alba-primary-400);  --accent: var(--alba-primary-300);
+  --ok: var(--alba-success-500);  --warn: var(--alba-warning-500);  --err: var(--alba-danger-400);
+  --ok-bg: var(--alba-success-900);  --warn-bg: var(--alba-warning-900);  --err-bg: var(--alba-danger-800);
+  --font: var(--alba-font);
+}
+

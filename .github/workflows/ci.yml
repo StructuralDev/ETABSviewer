@@ -1,0 +1,16 @@
+# Para proyectos sin build automatizable (Excel/VBA, HTML autocontenido): solo escaneo de seguridad.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  seguridad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Escaneo de secretos y binarios
+        shell: pwsh
+        run: ./.github/scripts/scan-secretos.ps1
