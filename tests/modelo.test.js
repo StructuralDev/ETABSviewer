@@ -144,5 +144,77 @@ await prueba('entradas inválidas dan errores claros', async () => {
   await lanza(() => parsearE2k(''), /vacío/);
   await lanza(() => parsearE2k('$ CONTROLS\n$ STORIES\n  STORY "Base" ELEVATION 0\n'), /UNITS/);
   await lanza(() => construirModelo(parsearE2k(texto.replace('"KGF"  "M"', '"KGF"  "YARDA"'))), /longitud no reconocida/);
-  await lanza(() => construirModelo(parsearE2k(texto.replace('"Base"  ELEVATION 0', '"Base"'))), /ELEVATION/);
+  await lanza(() => construirModelo(parsearE2k(texto.replace('"Base"  ELEVATION 0', '"Base"'))), /ELEV/);
+});
+
+// --- Formato real de ETABS 23.3.2 (extracto con la sintaxis del archivo exportado) ---
+// Las secciones de catálogo no traen área en el .e2k; los 0.004 y 0.001 m² de la tabla son valores
+// de prueba escritos a mano (no son propiedades AISC) para verificar la mecánica de cálculo.
+import { parsearTablaSecciones } from '../src/core/tabla.js';
+
+const textoReal = await leerFixture('formato-real.e2k');
+const csv = await leerFixture('secciones.csv');
+const GAMMA = 7849.0477; // 7.8490477 tonf/m³ × 1000 kg/tonf
+const real = construirModelo(parsearE2k(textoReal), { tablaSecciones: parsearTablaSecciones(csv) });
+const sinTabla = construirModelo(parsearE2k(textoReal));
+const porUid = (m, uid) => m.frames.find((f) => f.uid === uid);
+
+await prueba('pisos con ELEV en la base y MASTERSTORY', () => {
+  // Cim 0; Nivel 1 = 3.26; Nivel 2 = 6.52
+  igual(real.pisos.map((p) => p.elevacion_m), [0, 3.26, 6.52]);
+});
+
+await prueba('un frame por cada piso asignado (columna C1 en 2 pisos)', () => {
+  // Hay 6 LINEASSIGN en el archivo
+  igual(real.frames.length, 6);
+  const c1 = porUid(real, 'C1|Nivel 1'), c2 = porUid(real, 'C1|Nivel 2');
+  igual([c1.i[2], c1.j[2]], [0, 3.26]);
+  igual([c2.i[2], c2.j[2]], [3.26, 6.52]);
+});
+
+await prueba('peso con área de la tabla: columna C1 en Nivel 1', () => {
+  // L = 3.26 m ; A = 0.004 m² -> V = 0.01304 m³ ; peso = 0.01304 × 7849.0477 = 102.3516 kg
+  const c = porUid(real, 'C1|Nivel 1');
+  cerca(c.longitud_m, 3.26, 1e-9);
+  cerca(c.volumen_m3, 0.01304, 1e-6);
+  cerca(c.peso_kg, 102.35, 0.01);
+});
+
+await prueba('longitudes: viga, viga a centro y diagonal', () => {
+  // El modelo redondea longitudes a 0.1 mm (4 decimales en m): tolerancia 6e-5 m.
+  cerca(porUid(real, 'B1|Nivel 1').longitud_m, 2.5, 1e-9);
+  // √(1.25² + 1.75²) = √4.625 = 2.150581
+  cerca(porUid(real, 'P1|Nivel 1').longitud_m, 2.150581, 6e-5);
+  // diagonal de 2.5 m en planta y 3.26 m de altura: √(6.25 + 10.6276) = √16.8776 = 4.108233
+  cerca(porUid(real, 'D1|Nivel 1').longitud_m, 4.108233, 6e-5);
+});
+
+await prueba('contraviento: extremo I abajo (supuesto) y J arriba', () => {
+  const d = porUid(real, 'D1|Nivel 1');
+  igual(d.tipo, 'contraviento');
+  igual([d.i, d.j], [[2.5, 0, 0], [0, 0, 3.26]]);
+});
+
+await prueba('sin tabla: no hay peso pero sí dibujo y aviso', () => {
+  const c = porUid(sinTabla, 'C1|Nivel 1');
+  igual(c.peso_kg, null);
+  igual(c.volumen_m3, null);
+  igual(sinTabla.secciones['HSS8X8X1/4'].perfil !== null, true, 'perfil HSS por nombre');
+  igual(sinTabla.avisos.some((a) => /HSS8X8X1\/4.*sin área/.test(a)), true);
+});
+
+await prueba('tabla: unidades por fila de unidades, por parámetro y errores', async () => {
+  // Fila de unidades "m²": la longitud ya está en m
+  cerca(parsearTablaSecciones(csv)['HSS3X3X1/8'].area_m2, 0.001, 1e-12);
+  // Misma tabla en cm (sin fila de unidades): 10 cm² = 0.001 m² ; 7.62 cm = 0.0762 m
+  const cm = 'Name;Material;Shape;t3;t2;tf;tw;Area\nS1;M;Steel Tube;7.62;7.62;0.3;0.3;10\n';
+  const t = parsearTablaSecciones(cm, 'CM').S1;
+  cerca(t.area_m2, 0.001, 1e-12);
+  cerca(t.D, 0.0762, 1e-12);
+  await lanza(() => parsearTablaSecciones('a,b\n1,2\n'), /Name.*Area/);
+  await lanza(() => parsearTablaSecciones(''), /vacía/);
+});
+
+await prueba('densidad del acero desde TONF/m³', () => {
+  cerca(real.materiales.A500GrB46.pesoVolumetrico_kgm3, GAMMA, 0.01);
 });

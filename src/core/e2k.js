@@ -2,10 +2,12 @@
 // Devuelve los datos tal cual vienen, en las unidades del archivo; la conversión
 // a metros/kg se hace en modelo.js. Sin acceso al DOM.
 //
-// Sintaxis supuesta (pendiente de validar contra un .e2k real, ver CLAUDE.md):
+// Sintaxis (validada con un .e2k exportado de ETABS 23.3.2):
 //   - secciones que empiezan con "$ NOMBRE"
 //   - registros de una línea: PALABRA "id" ... con pares CLAVE valor
-//   - texto entre comillas dobles; comentarios con "$" al inicio de la línea
+//   - texto entre comillas dobles; el piso base trae ELEV (no ELEVATION)
+//   - un LINEASSIGN/AREAASSIGN por cada piso donde aparece el objeto
+//   - las secciones de catálogo (p. ej. HSS8X8X1/4) NO traen dimensiones ni área
 
 export class ErrorE2k extends Error {}
 
@@ -87,7 +89,8 @@ export function parsearE2k(texto) {
     } else if (seccion.startsWith('FRAME SECTIONS') && palabra === 'FRAMESECTION') {
       const nombre = t[1].v;
       m.secciones[nombre] = { ...(m.secciones[nombre] ?? {}), ...paresClaveValor(t, 2) };
-    } else if (seccion.startsWith('SHELL PROPERTIES') && palabra === 'SHELLPROP') {
+    } else if (palabra === 'SHELLPROP') {
+      // Vive en $ SLAB PROPERTIES, $ DECK PROPERTIES y $ WALL PROPERTIES.
       const nombre = t[1].v;
       m.propsArea[nombre] = { ...(m.propsArea[nombre] ?? {}), ...paresClaveValor(t, 2) };
     } else if (seccion.startsWith('POINT COORDINATES') && palabra === 'POINT') {

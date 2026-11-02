@@ -80,6 +80,17 @@ export function perfilDeSeccion(forma, d) {
   return null;
 }
 
+// Dimensiones solo para DIBUJAR secciones HSS rectangulares de catálogo (p. ej. "HSS8X8X1/4",
+// medidas nominales en pulgadas) cuando no hay tabla de ETABS. No se usan para cantidades.
+export function dimensionesVisualesPorNombre(nombre) {
+  const mm = /^HSS(\d+(?:\.\d+)?)X(\d+(?:\.\d+)?)X(\d+\/\d+|\d*\.\d+)$/i.exec(nombre);
+  if (!mm) return null;
+  const pulg = 0.0254;
+  const [num, den] = mm[3].includes('/') ? mm[3].split('/').map(Number) : [Number(mm[3]), 1];
+  const t = (num / den) * pulg;
+  return { forma: 'Steel Tube', D: Number(mm[1]) * pulg, B: Number(mm[2]) * pulg, TF: t, TW: t };
+}
+
 // ---------- Álgebra mínima 3D ----------
 
 const resta = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -156,14 +167,16 @@ export function construirModelo(e2k, opc = {}) {
   const pisosTop = e2k.pisos; // de arriba hacia abajo
   const elev = new Array(pisosTop.length);
   const ib = pisosTop.length - 1;
-  if (typeof pisosTop[ib].ELEVATION !== 'number') {
-    throw new ErrorModelo('El piso inferior (Base) no tiene ELEVATION en $ STORIES.');
+  // ETABS escribe ELEV en el piso base; se acepta también ELEVATION.
+  const elevDe = (p) => (typeof p.ELEV === 'number' ? p.ELEV : p.ELEVATION);
+  if (typeof elevDe(pisosTop[ib]) !== 'number') {
+    throw new ErrorModelo('El piso inferior (Base) no tiene ELEV en $ STORIES.');
   }
-  elev[ib] = m(pisosTop[ib].ELEVATION);
+  elev[ib] = m(elevDe(pisosTop[ib]));
   for (let k = ib - 1; k >= 0; k--) {
-    if (typeof pisosTop[k].ELEVATION === 'number') elev[k] = m(pisosTop[k].ELEVATION);
+    if (typeof elevDe(pisosTop[k]) === 'number') elev[k] = m(elevDe(pisosTop[k]));
     else if (typeof pisosTop[k].HEIGHT === 'number') elev[k] = elev[k + 1] + m(pisosTop[k].HEIGHT);
-    else throw new ErrorModelo(`El piso "${pisosTop[k].nombre}" no tiene HEIGHT ni ELEVATION.`);
+    else throw new ErrorModelo(`El piso "${pisosTop[k].nombre}" no tiene HEIGHT ni ELEV.`);
   }
   const idxPiso = Object.fromEntries(pisosTop.map((p, k) => [p.nombre, k]));
   const zPiso = (nombre, ctx) => {
@@ -189,27 +202,38 @@ export function construirModelo(e2k, opc = {}) {
     materiales[nombre] = { clase, pesoVolumetrico_kgm3: peso === null ? null : r(peso, 3) };
   }
 
-  // Secciones de frame.
+  // Secciones de frame. Las de catálogo (AISC...) no traen dimensiones ni área en el
+  // .e2k: se completan con la tabla "Frame Section Properties" de ETABS (opc.tablaSecciones).
+  const tabla = opc.tablaSecciones ?? {};
   const secciones = {};
   for (const [nombre, s] of Object.entries(e2k.secciones)) {
-    const forma = String(s.SHAPE ?? '');
+    const t = tabla[nombre] ?? null;
+    const forma = String(t?.forma || s.SHAPE || '');
     const dim = {};
     for (const k of ['D', 'B', 'BF', 'TF', 'TW']) if (typeof s[k] === 'number') dim[k] = m(s[k]);
+    if (t) {
+      for (const k of ['D', 'B', 'TF', 'TW']) if (dim[k] === undefined && t[k] !== null) dim[k] = t[k];
+      if (dim.BF === undefined && t.B !== null) dim.BF = t.B;
+    }
     let area = areaDeSeccion(forma, dim);
     let perfil = perfilDeSeccion(forma, dim);
-    if (area === null || !Number.isFinite(area) || area <= 0) {
-      avisos.push(`Sección "${nombre}" (${forma || 'sin forma'}): forma no soportada o dimensiones incompletas; sin cantidades.`);
-      area = null;
-      perfil = null;
-    }
-    const exacta = opc.areaSeccion_m2?.[nombre];
     let origenArea = area === null ? null : 'dimensiones';
-    if (typeof exacta === 'number' && exacta > 0) {
-      area = exacta;
+    if (typeof t?.area_m2 === 'number' && t.area_m2 > 0) {
+      area = t.area_m2; // área exacta de ETABS (incluye radios de acuerdo)
       origenArea = 'tabla';
     }
+    if (perfil === null) {
+      // Solo para dibujar: perfil de catálogo por nombre o rectángulo envolvente.
+      const v = dimensionesVisualesPorNombre(nombre, lf) ?? (dim.D && dim.B ? dim : null);
+      if (v) perfil = perfilDeSeccion(v.forma ?? 'rectangular', v);
+    }
+    if (area === null || !Number.isFinite(area) || area <= 0) {
+      area = null;
+      origenArea = null;
+      avisos.push(`Sección "${nombre}": sin área (falta la tabla Frame Section Properties o la forma no está soportada); se dibuja sin peso ni volumen.`);
+    }
     secciones[nombre] = {
-      material: s.MATERIAL ?? null,
+      material: t?.material || s.MATERIAL || null,
       forma,
       area_m2: area === null ? null : r(area, 8),
       origenArea,
@@ -248,45 +272,48 @@ export function construirModelo(e2k, opc = {}) {
   for (const [id, ln] of Object.entries(e2k.lineas)) {
     const asign = e2k.asignLineas[id];
     if (!asign) { avisos.push(`Línea "${id}" sin asignación; omitida.`); continue; }
-    if (asign.length > 1) avisos.push(`Línea "${id}" con ${asign.length} asignaciones; se usó la primera.`);
-    const a = asign[0];
-    const pi = e2k.puntos[ln.i], pj = e2k.puntos[ln.j];
-    if (!pi || !pj) { avisos.push(`Línea "${id}" con punto inexistente; omitida.`); continue; }
-    const ctx = `Línea "${id}"`;
-    let zi, zj;
-    if (ln.tipo === 'COLUMN') {
-      zj = zPiso(a.piso, ctx);
-      zi = zNiveles(a.piso, Math.max(1, ln.nPisos || 1), ctx);
-    } else if (ln.tipo === 'BRACE') {
-      zj = zPiso(a.piso, ctx);
-      zi = zNiveles(a.piso, Math.max(1, ln.nPisos || 1), ctx);
-    } else {
-      zi = zj = zPiso(a.piso, ctx);
+    for (const a of asign) { // ETABS escribe un LINEASSIGN por cada piso del objeto
+      const pi = e2k.puntos[ln.i], pj = e2k.puntos[ln.j];
+      if (!pi || !pj) { avisos.push(`Línea "${id}" con punto inexistente; omitida.`); continue; }
+      const ctx = `Línea "${id}"`;
+      let zi, zj;
+      if (ln.tipo === 'COLUMN') {
+        zj = zPiso(a.piso, ctx);
+        zi = zNiveles(a.piso, Math.max(1, ln.nPisos || 1), ctx);
+      } else if (ln.tipo === 'BRACE') {
+        // SUPUESTO por validar con ETABS: el extremo I está en el nivel inferior y el J en el
+        // superior (en el modelo de prueba las diagonales forman un zigzag continuo).
+        zj = zPiso(a.piso, ctx);
+        zi = zNiveles(a.piso, Math.max(1, ln.nPisos || 1), ctx);
+      } else {
+        zi = zj = zPiso(a.piso, ctx);
+      }
+      const I = [m(pi.x), m(pi.y), pi.z === null ? zi : m(pi.z)];
+      const J = [m(pj.x), m(pj.y), pj.z === null ? zj : m(pj.z)];
+      const L = norma(resta(J, I));
+      if (L < 1e-9) { avisos.push(`${ctx}: longitud nula; omitida.`); continue; }
+      const sec = secciones[a.SECTION];
+      if (!sec) { avisos.push(`${ctx}: sección "${a.SECTION}" desconocida.`); }
+      const area = sec?.area_m2 ?? null;
+      const volumen = area === null ? null : area * L;
+      const peso = volumen === null ? null : pesoDe(sec.material, volumen);
+      frames.push({
+        uid: `${id}|${a.piso}`,
+        id,
+        tipo: ln.tipo === 'COLUMN' ? 'columna' : ln.tipo === 'BRACE' ? 'contraviento' : 'viga',
+        piso: a.piso,
+        seccion: a.SECTION ?? null,
+        material: sec?.material ?? null,
+        clase: claseDe(sec?.material),
+        i: redondea3(I),
+        j: redondea3(J),
+        ang_grados: typeof a.ANG === 'number' ? a.ANG : 0,
+        longitud_m: r(L, 4),
+        area_m2: area,
+        volumen_m3: volumen === null ? null : r(volumen, 6),
+        peso_kg: peso === null ? null : r(peso, 3),
+      });
     }
-    const I = [m(pi.x), m(pi.y), pi.z === null ? zi : m(pi.z)];
-    const J = [m(pj.x), m(pj.y), pj.z === null ? zj : m(pj.z)];
-    const L = norma(resta(J, I));
-    if (L < 1e-9) { avisos.push(`${ctx}: longitud nula; omitida.`); continue; }
-    const sec = secciones[a.SECTION];
-    if (!sec) { avisos.push(`${ctx}: sección "${a.SECTION}" desconocida.`); }
-    const area = sec?.area_m2 ?? null;
-    const volumen = area === null ? null : area * L;
-    const peso = volumen === null ? null : pesoDe(sec.material, volumen);
-    frames.push({
-      id,
-      tipo: ln.tipo === 'COLUMN' ? 'columna' : ln.tipo === 'BRACE' ? 'contraviento' : 'viga',
-      piso: a.piso,
-      seccion: a.SECTION ?? null,
-      material: sec?.material ?? null,
-      clase: claseDe(sec?.material),
-      i: redondea3(I),
-      j: redondea3(J),
-      ang_grados: typeof a.ANG === 'number' ? a.ANG : 0,
-      longitud_m: r(L, 4),
-      area_m2: area,
-      volumen_m3: volumen === null ? null : r(volumen, 6),
-      peso_kg: peso === null ? null : r(peso, 3),
-    });
   }
 
   // Áreas.
@@ -294,47 +321,49 @@ export function construirModelo(e2k, opc = {}) {
   for (const [id, ar] of Object.entries(e2k.areas)) {
     const asign = e2k.asignAreas[id];
     if (!asign) { avisos.push(`Área "${id}" sin asignación; omitida.`); continue; }
-    const a = asign[0];
-    const ctx = `Área "${id}"`;
-    const xy = [];
-    for (const p of ar.puntos) {
-      const pt = e2k.puntos[p];
-      if (!pt) { avisos.push(`${ctx} con punto inexistente; omitida.`); xy.length = 0; break; }
-      xy.push([m(pt.x), m(pt.y)]);
+    for (const a of asign) {
+      const ctx = `Área "${id}"`;
+      const xy = [];
+      for (const p of ar.puntos) {
+        const pt = e2k.puntos[p];
+        if (!pt) { avisos.push(`${ctx} con punto inexistente; omitida.`); xy.length = 0; break; }
+        xy.push([m(pt.x), m(pt.y)]);
+      }
+      if (xy.length < 3) continue;
+      let pts;
+      if (ar.tipo === 'PANEL') {
+        // Muro: los puntos repetidos (arriba/abajo) se reducen a los vértices únicos en planta.
+        const unicos = [];
+        for (const q of xy) if (!unicos.some((u) => Math.hypot(u[0] - q[0], u[1] - q[1]) < 1e-6)) unicos.push(q);
+        if (unicos.length !== 2) { avisos.push(`${ctx}: muro con ${unicos.length} vértices en planta; no soportado, omitido.`); continue; }
+        const zt = zPiso(a.piso, ctx), zb = zNiveles(a.piso, 1, ctx);
+        const [p, q] = unicos;
+        pts = [[p[0], p[1], zb], [q[0], q[1], zb], [q[0], q[1], zt], [p[0], p[1], zt]];
+      } else {
+        const z = zPiso(a.piso, ctx);
+        pts = xy.map(([x, y]) => [x, y, z]);
+      }
+      const prop = propsArea[a.SECTION];
+      if (!prop) avisos.push(`${ctx}: propiedad "${a.SECTION}" desconocida.`);
+      const A = areaPoligono3d(pts);
+      const esp = prop?.espesor_m ?? null;
+      const volumen = esp === null ? null : A * esp;
+      const peso = volumen === null ? null : pesoDe(prop.material, volumen);
+      areas.push({
+        uid: `${id}|${a.piso}`,
+        id,
+        tipo: ar.tipo === 'PANEL' ? 'muro' : ar.tipo === 'RAMP' ? 'rampa' : 'losa',
+        piso: a.piso,
+        seccion: a.SECTION ?? null,
+        material: prop?.material ?? null,
+        clase: claseDe(prop?.material),
+        pts: pts.map(redondea3),
+        area_m2: r(A, 6),
+        espesor_m: esp,
+        volumen_m3: volumen === null ? null : r(volumen, 6),
+        peso_kg: peso === null ? null : r(peso, 3),
+      });
     }
-    if (xy.length < 3) continue;
-    let pts;
-    if (ar.tipo === 'PANEL') {
-      // Muro: los puntos repetidos (arriba/abajo) se reducen a los vértices únicos en planta.
-      const unicos = [];
-      for (const q of xy) if (!unicos.some((u) => Math.hypot(u[0] - q[0], u[1] - q[1]) < 1e-6)) unicos.push(q);
-      if (unicos.length !== 2) { avisos.push(`${ctx}: muro con ${unicos.length} vértices en planta; no soportado, omitido.`); continue; }
-      const zt = zPiso(a.piso, ctx), zb = zNiveles(a.piso, 1, ctx);
-      const [p, q] = unicos;
-      pts = [[p[0], p[1], zb], [q[0], q[1], zb], [q[0], q[1], zt], [p[0], p[1], zt]];
-    } else {
-      const z = zPiso(a.piso, ctx);
-      pts = xy.map(([x, y]) => [x, y, z]);
-    }
-    const prop = propsArea[a.SECTION];
-    if (!prop) avisos.push(`${ctx}: propiedad "${a.SECTION}" desconocida.`);
-    const A = areaPoligono3d(pts);
-    const esp = prop?.espesor_m ?? null;
-    const volumen = esp === null ? null : A * esp;
-    const peso = volumen === null ? null : pesoDe(prop.material, volumen);
-    areas.push({
-      id,
-      tipo: ar.tipo === 'PANEL' ? 'muro' : ar.tipo === 'RAMP' ? 'rampa' : 'losa',
-      piso: a.piso,
-      seccion: a.SECTION ?? null,
-      material: prop?.material ?? null,
-      clase: claseDe(prop?.material),
-      pts: pts.map(redondea3),
-      area_m2: r(A, 6),
-      espesor_m: esp,
-      volumen_m3: volumen === null ? null : r(volumen, 6),
-      peso_kg: peso === null ? null : r(peso, 3),
-    });
   }
 
   if (frames.length + areas.length === 0) {
