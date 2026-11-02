@@ -5,7 +5,7 @@
 - **Sitio:** GitHub Pages del repositorio, publicado por `.github/workflows/pages.yml` en cada merge a `main`.
   Solo se sube `index.html`, `src/` (sin el convertidor), `design/`, `vendor/` y `models/`.
 - **Modelos:** únicamente cifrados (`models/<id>.enc.json`, AES-256-GCM). Los `.e2k`, `.edb`, tablas y contraseñas **no** van al repositorio.
-- **Enlace para el cliente:** `https://<org>.github.io/<repo>/?c=<id>` (opcional `&m=<n>` para abrir un modelo concreto).
+- **Enlace para el cliente:** `https://structuraldev.github.io/ETABSviewer/?c=<id>` (opcional `&m=<n>` para abrir un modelo concreto).
 - **Google Sites:** `Insertar → Incrustar → Por URL`, pegar el enlace. GitHub Pages no bloquea la inserción en un iframe.
 - **Convertidor:** herramienta interna; se usa en local (`python -m http.server 8000` → `http://localhost:8000/convertidor.html`).
 
@@ -22,9 +22,9 @@ Por eso la protección es el cifrado, no el acceso al sitio:
 
 ## Puesta en marcha (una sola vez)
 
-1. Crear el issue del proyecto y el repositorio (`ALBA-Desarrollos/visor-etabs`, público).
-2. Subir la rama `feat/visor-etabs`, abrir el PR con `/pr` y que una persona lo apruebe y haga el merge a `main`.
-3. En el repositorio: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+1. Repositorio creado: `StructuralDev/ETABSviewer` (público, Pages con origen *GitHub Actions* ya configurado). Falta crear el issue del proyecto.
+2. El repositorio nace vacío: crear `main` con un primer commit desde la web de GitHub (p. ej. un README), subir la rama `feat/visor-etabs`, abrir el PR con `/pr` y que una persona lo apruebe y haga el merge a `main`.
+3. *(Hecho)* **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 4. Proteger `main` (Settings → Branches): PR obligatorio con 1 aprobación y el CI en verde.
 5. Tras el primer merge, el flujo "Publicar visor" deja la URL en el resumen del job; probar con un paquete de prueba.
 

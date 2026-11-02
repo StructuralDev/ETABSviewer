@@ -41,7 +41,7 @@ Despliegue y seguridad: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 1. Abre `convertidor.html` (en local: `python -m http.server 8000` y entra a `http://localhost:8000/convertidor.html`).
 2. Carga las bibliotecas de perfiles (una vez), captura el nombre del paquete, agrega uno o varios modelos (`.e2k`, y tabla solo si hace falta) y genera la contraseña.
 3. Se descarga `<identificador>.enc.json`. Cópialo a `models/` y súbelo por pull request.
-4. El enlace es `https://<usuario>.github.io/<repositorio>/?c=<identificador>`.
+4. El enlace es `https://structuraldev.github.io/ETABSviewer/?c=<identificador>`.
 5. En Google Sites: `Insertar → Incrustar → Por URL` y pega ese enlace. Comparte la contraseña por otro canal.
 
 **Seguridad.** El repositorio de GitHub Pages gratuito es público. Los modelos se publican solo cifrados (AES-256-GCM, clave derivada con PBKDF2-SHA256, 600 000 iteraciones); sin la contraseña el archivo no se puede leer, aunque alguien conozca el enlace. Una contraseña débil se puede adivinar por fuerza bruta fuera de línea: usa la generada (o una frase larga) y una distinta por cliente. Nunca subas `.e2k`, `.edb`, tablas ni contraseñas al repositorio.

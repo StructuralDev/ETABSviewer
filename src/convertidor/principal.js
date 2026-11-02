@@ -104,7 +104,7 @@ $('forma').addEventListener('submit', async (ev) => {
       }),
       nodo('p', { class: 'nota' }, 'Pasos: 1) copia el archivo descargado a la carpeta ', nodo('code', {}, 'models/'),
         ' del repositorio · 2) súbelo con un pull request · 3) el enlace queda así:'),
-      nodo('p', {}, nodo('code', {}, `https://<usuario>.github.io/<repositorio>/?c=${$('idp').value}`)),
+      nodo('p', {}, nodo('code', {}, `https://structuraldev.github.io/ETABSviewer/?c=${$('idp').value}`)),
       nodo('p', { class: 'nota' }, 'Comprueba los totales contra el Material Takeoff de ETABS antes de compartir. No guardes la contraseña en el repositorio.'),
     );
     $('idp').value = generarIdPaquete(); // el siguiente paquete usa otro identificador
