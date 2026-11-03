@@ -41,6 +41,18 @@ Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archiv
 
 Despliegue y seguridad: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 
+## Convertidor autónomo (para que otros conviertan modelos)
+
+Para que un colega convierta sus modelos sin instalar nada ni abrir un servidor, genera el convertidor en **un solo archivo HTML**:
+
+```bash
+python tools/construir_convertidor.py
+```
+
+Crea `dist/convertidor-autonomo.html` (unos 140 KB; `dist/` no se versiona). Mándalo por correo o Teams: se abre con doble clic en Edge o Chrome, sin internet. Su política de seguridad **bloquea toda conexión de red**, así que los `.e2k` no salen de la computadora. Al pie lleva la versión y la fecha; si cambias el convertidor, vuelve a generarlo y a enviarlo.
+
+Flujo del colega: escribe el nombre del cliente → elige la carpeta `Property Libraries` de su ETABS y agrega cada `.e2k` → "Generar paquete cifrado". Se descarga `<id>.enc.json` y se muestra la contraseña (con botón de copiar). Te manda el archivo y, **por otro canal**, la contraseña; tú copias el archivo a `models/` y lo subes por pull request. Editar un paquete existente, el identificador y la nota general están en "Opciones avanzadas".
+
 ## Publicar un paquete para un cliente
 
 1. Abre `convertidor.html` (en local: `python -m http.server 8000 --bind 127.0.0.1` y entra a `http://localhost:8000/convertidor.html`).
@@ -63,7 +75,7 @@ Al abrir, el identificador y la contraseña se conservan: si generas con ambos i
 
 ## Desarrollo
 
-- Pruebas: abrir `tests/index.html` desde un servidor local, o `node --test tests/` (Node 20+).
+- Pruebas: abrir `tests/index.html` desde un servidor local, o `node --test tests/` (Node 20+). El empaquetador del convertidor autónomo se prueba con `python -m unittest discover -s tools -p "test_*.py"`.
 - Dependencia declarada: `three` 0.160.0 (MIT) en `vendor/three.module.min.js`, descargada de jsDelivr.
 - Estilo: tokens de ALBA-ds en `design/alba-ds.css`.
 

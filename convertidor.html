@@ -12,36 +12,20 @@
 <body>
   <div class="pagina">
     <img class="logo-conv" src="design/logo_alba.svg" alt="ALBA">
-    <h1>Convertidor y gestor de paquetes</h1>
-    <p>Uso interno. Todo se procesa en este navegador: los archivos originales no se suben a ningún lado.</p>
-
-    <div class="bloque-form" id="bloque-abrir">
-      <h2>Abrir un paquete existente (opcional)</h2>
-      <p class="nota">Para renombrar, reordenar o quitar modelos, o cambiar etiquetas, colores y notas de un paquete ya publicado.
-        Elige su archivo <code>models/&lt;id&gt;.enc.json</code> y escribe su contraseña. Para crear uno nuevo, sáltate este paso.</p>
-      <div class="dos">
-        <div class="campo">
-          <label for="abrir-archivo">Paquete cifrado (.enc.json)</label>
-          <input id="abrir-archivo" type="file" accept=".json">
-        </div>
-        <div class="campo">
-          <label for="abrir-clave">Contraseña del paquete</label>
-          <input id="abrir-clave" type="password" autocomplete="off">
-        </div>
-      </div>
-      <button type="button" id="abrir" class="btn sec">Abrir paquete</button>
-    </div>
+    <h1>Convertidor de modelos ETABS</h1>
+    <p>Todo se procesa en este navegador: los archivos originales no se suben a ningún lado.</p>
+    <ol class="pasos">
+      <li>Escribe el nombre del cliente o proyecto.</li>
+      <li>Elige una vez la carpeta de bibliotecas de tu ETABS y agrega cada modelo (<b>.e2k</b>).</li>
+      <li>Genera el paquete: se descarga un archivo <b>.enc.json</b>. Envíalo a quien lo publica y la contraseña por <b>otro canal</b> (no en el mismo mensaje).</li>
+    </ol>
 
     <form id="forma" autocomplete="off">
       <div class="bloque-form">
-        <h2>1. Paquete (cliente o proyecto)</h2>
+        <h2>1. Cliente o proyecto</h2>
         <div class="campo">
           <label for="nombre">Nombre que verá el cliente</label>
           <input id="nombre" type="text" placeholder="Ej. Torre de apuntalamiento TPO" maxlength="80" required>
-        </div>
-        <div class="campo">
-          <label for="nota">Nota general para el cliente (opcional)</label>
-          <textarea id="nota" rows="3" maxlength="2000" placeholder="Ej. Alcance de la entrega, criterios, fecha de corte."></textarea>
         </div>
       </div>
 
@@ -97,24 +81,16 @@
       </div>
 
       <div class="bloque-form">
-        <h2>4. Acceso</h2>
-        <div class="dos">
-          <div class="campo">
-            <label for="idp">Identificador del enlace</label>
-            <div class="fila-clave">
-              <input id="idp" type="text" readonly>
-              <button type="button" id="nuevo-id" class="btn sec">Nuevo</button>
-            </div>
-          </div>
-          <div class="campo">
-            <label for="clave">Contraseña (mín. 14 caracteres)</label>
-            <div class="fila-clave">
-              <input id="clave" type="text" required minlength="14">
-              <button type="button" id="generar" class="btn sec">Generar</button>
-            </div>
+        <h2>4. Contraseña</h2>
+        <div class="campo">
+          <label for="clave">Contraseña del paquete (mín. 14 caracteres)</label>
+          <div class="fila-clave">
+            <input id="clave" type="text" required minlength="14">
+            <button type="button" id="copiar-clave" class="btn sec">Copiar</button>
+            <button type="button" id="generar" class="btn sec">Generar otra</button>
           </div>
         </div>
-        <p class="nota" id="nota-acceso">Usa una contraseña distinta por cliente. El repositorio es público: la contraseña es lo único que protege los modelos, así que debe ser larga. Compártela por un canal distinto al del enlace.</p>
+        <p class="nota">Se genera una al azar. El repositorio es público: la contraseña es lo único que protege los modelos, así que debe ser larga y distinta por cliente. Compártela por un canal distinto al del archivo y del enlace.</p>
       </div>
 
       <button id="crear" class="btn" type="submit">Generar paquete cifrado</button>
@@ -122,6 +98,39 @@
 
     <div id="error" class="error" role="alert" hidden></div>
     <section id="resultado" class="bloque-form resultado" hidden></section>
+
+    <details class="bloque-form" id="avanzado">
+      <summary>Opciones avanzadas (quien publica)</summary>
+      <h3>Abrir un paquete existente</h3>
+      <p class="nota">Para renombrar, reordenar o quitar modelos, o cambiar etiquetas, colores y notas de un paquete ya publicado.
+        Elige su archivo <code>models/&lt;id&gt;.enc.json</code> y escribe su contraseña. Para crear uno nuevo, sáltate este paso.</p>
+      <div class="dos">
+        <div class="campo">
+          <label for="abrir-archivo">Paquete cifrado (.enc.json)</label>
+          <input id="abrir-archivo" type="file" accept=".json">
+        </div>
+        <div class="campo">
+          <label for="abrir-clave">Contraseña del paquete</label>
+          <input id="abrir-clave" type="password" autocomplete="off">
+        </div>
+      </div>
+      <button type="button" id="abrir" class="btn sec">Abrir paquete</button>
+
+      <h3>Identificador y nota general</h3>
+      <div class="campo">
+        <label for="idp">Identificador del enlace</label>
+        <div class="fila-clave">
+          <input id="idp" type="text" readonly>
+          <button type="button" id="nuevo-id" class="btn sec">Nuevo</button>
+        </div>
+      </div>
+      <p class="nota" id="nota-acceso">Es el nombre del archivo y lo que va después de <code>?c=</code> en el enlace.</p>
+      <div class="campo">
+        <label for="nota">Nota general para el cliente (opcional)</label>
+        <textarea id="nota" rows="3" maxlength="2000" placeholder="Ej. Alcance de la entrega, criterios, fecha de corte."></textarea>
+      </div>
+    </details>
+    <p class="nota" id="version"><!--VERSION--></p>
   </div>
   <script type="module" src="src/convertidor/principal.js"></script>
 </body>

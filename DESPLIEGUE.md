@@ -30,7 +30,7 @@ Por eso la protección es el cifrado, no el acceso al sitio:
 
 ## Publicar o actualizar un cliente
 
-1. Convertidor local → descarga `<id>.enc.json` y muestra la contraseña. Para cambiar un paquete publicado, ábrelo en el mismo convertidor (bloque "Abrir un paquete existente"), edítalo y vuelve a generarlo con el mismo identificador y contraseña.
+1. Convertidor local → descarga `<id>.enc.json` y muestra la contraseña. Si otra persona convierte los modelos, usa el convertidor autónomo (`python tools/construir_convertidor.py`, un solo HTML que se comparte): te devuelve el `.enc.json` y la contraseña por otro canal. Para cambiar un paquete publicado, ábrelo en el mismo convertidor (bloque "Abrir un paquete existente"), edítalo y vuelve a generarlo con el mismo identificador y contraseña.
 2. Copiar a `models/` y abrir un PR (el CI revisa que no haya secretos ni binarios).
 3. Merge → el flujo publica en ~1-2 minutos (la caché de Pages puede tardar unos minutos más).
 4. Enviar al cliente el enlace y, **por otro canal**, la contraseña.
