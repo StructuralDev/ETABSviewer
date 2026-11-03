@@ -46,11 +46,18 @@
       </div>
 
       <div class="bloque-form">
-        <h2>2. Bibliotecas de perfiles (opcional)</h2>
-        <p class="nota">El <b>.e2k</b> solo trae el nombre de los perfiles de catálogo (p. ej. <code>HSS8X8X1/4</code>, archivo <code>AISC14</code>); su área está en la biblioteca de ETABS.
-          Las bibliotecas AISC 14, 15 y 16 (y sus versiones métricas) <b>ya vienen incluidas</b> y se usan solas según el <code>FILE</code> del .e2k.
-          Carga aquí una biblioteca propia solo si tu modelo usa otra (<code>.xml</code> de la carpeta <code>Property Libraries</code> de ETABS); se guarda en este navegador y tiene prioridad sobre la incluida.</p>
-        <input id="bibliotecas" type="file" accept=".xml" multiple>
+        <h2>2. Bibliotecas de perfiles de ETABS</h2>
+        <p class="nota">El <b>.e2k</b> solo trae el nombre de los perfiles de catálogo (p. ej. <code>HSS8X8X1/4</code>, archivo <code>AISC14</code>); su área está en las bibliotecas de tu instalación de ETABS.
+          Elige una vez la carpeta <code>Property Libraries</code> (normalmente <code>C:\Program Files\Computers and Structures\ETABS 23\Property Libraries</code>):
+          solo se leen los archivos que cada modelo necesita y quedan guardados en este navegador. No se suben a ningún lado ni se incluyen en el repositorio.
+          Si no tienes ETABS a la mano, sirve la tabla de secciones exportada (paso 3).</p>
+        <label for="carpeta-bibliotecas">Carpeta Property Libraries</label>
+        <input id="carpeta-bibliotecas" type="file" webkitdirectory>
+        <p class="nota" id="estado-carpeta"></p>
+        <details>
+          <summary>Cargar bibliotecas sueltas (.xml)</summary>
+          <input id="bibliotecas" type="file" accept=".xml" multiple>
+        </details>
         <ul id="lista-bibliotecas" class="nota"></ul>
       </div>
 
@@ -62,7 +69,7 @@
         <div class="modelo" id="nuevo">
           <h3>Agregar un modelo</h3>
           <p class="nota">El <b>.e2k</b> (File → Export → ETABS .e2k File) y, solo si el modelo tiene perfiles que no están en
-            las bibliotecas (secciones propias o de otra norma), la tabla de propiedades de secciones de frame:
+            las bibliotecas (secciones propias o de otra norma) o no tienes las bibliotecas a la mano, la tabla de propiedades de secciones de frame:
             <b>Display → Show Tables → Model Definition → Section Properties → Frame Section Properties</b>
             y luego <b>File → Export → Excel</b> (sirve el .xlsx tal cual). El modelo nuevo se agrega al final.</p>
           <div class="campo">

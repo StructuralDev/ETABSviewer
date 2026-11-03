@@ -1,6 +1,7 @@
-// Bibliotecas de perfiles de ETABS ya leídas, guardadas en este navegador (IndexedDB) para no
-// tener que volver a elegirlas en cada conversión. Nunca se suben a ningún servidor.
-import { expandirBiblioteca } from '../core/biblioteca.js';
+// Bibliotecas de perfiles de ETABS (carpeta "Property Libraries" de la instalación del propio usuario).
+// Se leen en este navegador y las ya leídas se guardan en IndexedDB para no volver a elegirlas.
+// No se suben a ningún servidor ni se incluyen en el repositorio (son de CSI).
+import { parsearBibliotecaCsi } from '../core/biblioteca.js';
 
 const BD = 'visor-etabs';
 const TIENDA = 'bibliotecas';
@@ -36,24 +37,25 @@ export async function leerBibliotecas() {
   return Object.fromEntries(claves.map((k, i) => [k, valores[i]]));
 }
 
-const NOMBRE_VALIDO = /^[A-Za-z0-9._-]+$/;
-
 /**
- * Devuelve { NOMBRE: biblioteca } para los archivos pedidos: primero las que el usuario cargó en
- * este navegador y, si faltan, las incluidas en data/perfiles/. Las que no se encuentran se omiten
- * (el modelo avisa qué sección quedó sin peso).
+ * Devuelve { NOMBRE: biblioteca } para los archivos pedidos: primero las guardadas en este navegador
+ * y, si faltan, las que haya en `archivos` (Map NOMBRE -> File de la carpeta Property Libraries que
+ * eligió el usuario), que se leen y se guardan para la próxima vez. Las que no se encuentran se omiten:
+ * quien llama compara contra `nombres` para avisar qué falta.
  */
-export async function obtenerBibliotecas(nombres) {
-  let propias = {};
-  try { propias = await leerBibliotecas(); } catch { /* IndexedDB no disponible */ }
+export async function obtenerBibliotecas(nombres, archivos = new Map(), { leerArchivo = (f) => f.text() } = {}) {
+  let guardadas = {};
+  try { guardadas = await leerBibliotecas(); } catch { /* IndexedDB no disponible: solo se usa lo que haya en la carpeta */ }
   const out = {};
   for (const n of nombres) {
-    if (propias[n]) { out[n] = propias[n]; continue; }
-    if (!NOMBRE_VALIDO.test(n)) continue;
-    try {
-      const r = await fetch(`data/perfiles/${n}.json`);
-      if (r.ok) out[n] = expandirBiblioteca(await r.json());
-    } catch { /* sin biblioteca incluida para este nombre */ }
+    if (guardadas[n]) { out[n] = guardadas[n]; continue; }
+    const archivo = archivos.get(n);
+    if (!archivo) continue;
+    out[n] = parsearBibliotecaCsi(await leerArchivo(archivo));
+    try { await guardarBiblioteca(n, out[n]); } catch { /* sin IndexedDB: se vuelve a leer la próxima vez */ }
   }
   return out;
 }
+
+// Nombres de bibliotecas que el modelo usa y que no están disponibles.
+export const bibliotecasFaltantes = (usadas, disponibles) => usadas.filter((n) => !disponibles[n]);

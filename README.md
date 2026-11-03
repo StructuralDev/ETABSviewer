@@ -9,7 +9,7 @@ Al seleccionar uno o varios elementos muestra su geometría y sus cantidades: **
 ## Qué se exporta desde ETABS
 
 1. **`.e2k`** de cada modelo: `File → Export → ETABS .e2k File`. Trae geometría, pisos, materiales y espesores.
-2. **Biblioteca de perfiles** (solo para el peso del acero de perfiles de catálogo): el `.e2k` trae el nombre del perfil (p. ej. `HSS8X8X1/4`) y el archivo (`FILE "AISC14"`), pero no su área. El área está en la carpeta `Property Libraries` de tu instalación de ETABS (p. ej. `C:\Program Files\Computers and Structures\ETABS 23\Property Libraries\AISC14.xml`). Se carga **una sola vez** en el convertidor (queda guardada en el navegador) y es la misma que usa ETABS. No hace falta exportar tablas de Excel.
+2. **Biblioteca de perfiles** (solo para el peso del acero de perfiles de catálogo): el `.e2k` trae el nombre del perfil (p. ej. `HSS8X8X1/4`) y el archivo (`FILE "AISC14"`), pero no su área. El área está en la carpeta `Property Libraries` de tu instalación de ETABS (p. ej. `C:\Program Files\Computers and Structures\ETABS 23\Property Libraries\AISC14.xml`). En el convertidor eliges **una vez** esa carpeta: solo se leen los archivos que el modelo necesita y quedan guardados en tu navegador (no se suben a ningún lado). Es la misma biblioteca que usa ETABS, así que no hace falta exportar tablas de Excel. **Las bibliotecas son de CSI y no se incluyen en este repositorio.**
 3. **Tabla `Frame Section Properties`** (opcional): solo para perfiles que no estén en las bibliotecas (secciones propias, otras normas). `Display → Show Tables → Model Definition → Section Properties → Frame Section Properties`, y luego `File → Export → Excel`. El `.xlsx` se carga tal cual (también sirve CSV). ETABS redondea el área a los decimales de la tabla (p. ej. 0.1 cm²): la biblioteca es más exacta.
 
 Orden de prioridad del área: dimensiones del propio `.e2k` → biblioteca → tabla.
@@ -44,7 +44,7 @@ Despliegue y seguridad: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 ## Publicar un paquete para un cliente
 
 1. Abre `convertidor.html` (en local: `python -m http.server 8000 --bind 127.0.0.1` y entra a `http://localhost:8000/convertidor.html`).
-2. Carga las bibliotecas de perfiles (una vez), captura el nombre del paquete, agrega uno o varios modelos (`.e2k`, y tabla solo si hace falta) y genera la contraseña.
+2. Elige la carpeta `Property Libraries` de tu ETABS (una vez), captura el nombre del paquete, agrega uno o varios modelos (`.e2k`, y tabla solo si hace falta) y genera la contraseña.
 3. Se descarga `<identificador>.enc.json`. Cópialo a `models/` y súbelo por pull request.
 4. El enlace es `https://structuraldev.github.io/ETABSviewer/?c=<identificador>`.
 5. En Google Sites: `Insertar → Incrustar → Por URL` y pega ese enlace. Comparte la contraseña por otro canal.

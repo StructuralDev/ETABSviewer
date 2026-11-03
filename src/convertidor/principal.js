@@ -12,7 +12,7 @@ import {
   moverModelo, quitarModelo, agregarModelo, renombrarModelo, renombrarPaquete, fijarNotaPaquete, fijarMeta,
   validarPaquete, claveEje, propio, LIMITES, sanearMeta,
 } from '../core/gestor.js';
-import { guardarBiblioteca, borrarBiblioteca, leerBibliotecas, obtenerBibliotecas } from './bibliotecas.js';
+import { guardarBiblioteca, borrarBiblioteca, leerBibliotecas, obtenerBibliotecas, bibliotecasFaltantes } from './bibliotecas.js';
 
 const $ = (id) => document.getElementById(id);
 const ID_ARCHIVO = /^([A-Za-z0-9_-]{4,64})\.enc\.json$/i;
@@ -231,7 +231,14 @@ $('agregar').addEventListener('click', async () => {
     };
     let usadas;
     try { usadas = bibliotecasUsadas(e2k); } catch (e) { throw new Error(`${entrada.nombre.trim() || `Modelo ${paquete.modelos.length + 1}`}: ${e.message}`); }
-    const modelo = construirModeloDeEntrada(entrada, paquete.modelos.length, await obtenerBibliotecas(usadas));
+    const bibliotecas = await obtenerBibliotecas(usadas, archivosCarpeta, { leerArchivo: (f) => { revisaTamano(f); return f.text(); } });
+    const faltan = bibliotecasFaltantes(usadas, bibliotecas);
+    // Con la tabla de secciones exportada de ETABS el peso sale sin la biblioteca; sin ella, no se agrega a ciegas.
+    if (faltan.length && !entrada.tabla && !entrada.hojasTabla) {
+      throw new Error(`Falta la biblioteca de perfiles ${faltan.join(', ')} (la usa este modelo). En el paso 2 elige la carpeta Property Libraries de tu ETABS, `
+        + 'o agrega abajo la tabla de secciones exportada de ETABS (Frame Section Properties).');
+    }
+    const modelo = construirModeloDeEntrada(entrada, paquete.modelos.length, bibliotecas);
     paquete = agregarModelo(paquete, modelo);
     for (const input of f.querySelectorAll('input')) input.value = '';
     pintarLista();
@@ -295,6 +302,19 @@ async function pintarBibliotecas() {
       `${nombre} · ${Object.keys(b.perfiles).length} perfiles `,
       nodo('button', { type: 'button', class: 'btn sec chico', 'data-borrar': nombre }, 'Quitar')))));
 }
+
+// Carpeta Property Libraries de ETABS: solo se recuerdan los archivos .xml (se leen cuando un modelo los pide).
+const archivosCarpeta = new Map();
+$('carpeta-bibliotecas').addEventListener('change', (ev) => {
+  archivosCarpeta.clear();
+  for (const archivo of ev.target.files) {
+    const nombre = /([^/\\]+)\.xml$/i.exec(archivo.name)?.[1];
+    if (nombre && !archivosCarpeta.has(nombre.toUpperCase())) archivosCarpeta.set(nombre.toUpperCase(), archivo);
+  }
+  $('estado-carpeta').textContent = archivosCarpeta.size
+    ? `Carpeta lista: ${archivosCarpeta.size} bibliotecas disponibles (${[...archivosCarpeta.keys()].filter((n) => /^AISC/.test(n)).slice(0, 8).join(', ') || 'ninguna AISC'}).`
+    : 'No se encontraron archivos .xml en esa carpeta. Elige la carpeta Property Libraries de ETABS.';
+});
 
 $('lista-bibliotecas').addEventListener('click', async (ev) => {
   const nombre = ev.target.dataset?.borrar;
