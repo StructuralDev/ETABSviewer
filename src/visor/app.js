@@ -2,11 +2,11 @@
 import * as THREE from 'three';
 import { Orbita } from './orbita.js';
 import { geometriaFrame, geometriaArea } from './geometria.js';
-import { resumir } from '../core/resumen.js';
+import { resumir, agruparPor, volumenTotal_m3 } from '../core/resumen.js';
 import { M2_A_CM2 } from '../core/unidades.js';
 import { elementosDePiso, elementosDeEje, azimutAlzado } from '../core/vistas.js';
 import { normalizaRect, modoDeCaja, puntoEnRect, puntosDentro, segmentoTocaRect, poligonoTocaRect } from '../core/caja.js';
-import { leyenda, valorDeColor } from '../core/colores.js';
+import { leyenda, valorDeColor, CRITERIOS } from '../core/colores.js';
 import { etiquetaDePiso, etiquetaDeEje } from '../core/gestor.js';
 
 const TIPOS = { viga: 'Viga', columna: 'Columna', contraviento: 'Contraviento', losa: 'Losa', muro: 'Muro', rampa: 'Rampa' };
@@ -41,9 +41,12 @@ export class Visor {
     this.modelo = null;
     this.notaPaquete = ''; // nota general del paquete (la fija quien abre el visor)
     this.criterio = 'clase'; // criterio de "Color por" vigente
+    this.agrupar = ''; // criterio de subtotales de la tabla de selección ('' = sin agrupar)
     this.seleccion = new Set();
     this._pendiente = false;
     this._materiales = new Map(); // "#rrggbb" -> material
+    this._materialesHover = new Map(); // "#rrggbb" -> material un poco más claro para el hover
+    this._hover = null; // malla bajo el cursor
 
     this.escena = new THREE.Scene();
     this.escena.background = colorToken('--alba-fondo-marco');
@@ -89,6 +92,8 @@ export class Visor {
     }
     this.modelo = modelo;
     this.seleccion.clear();
+    this._hover = null; // las mallas anteriores ya no existen
+    this.renderer.domElement.style.cursor = '';
     this.criterio = modelo.meta?.colorPor ?? 'clase';
     this._calculaLeyenda();
     this.grupo = new THREE.Group();
@@ -122,15 +127,27 @@ export class Visor {
     return m;
   }
 
+  // Mismo color pero algo más claro (28 % hacia blanco): resalte tenue, distinto del naranja de la selección.
+  _materialHoverDe(e) {
+    const hex = this._colorDe.get(valorDeColor(e, this.criterio));
+    let m = this._materialesHover.get(hex);
+    if (!m) {
+      m = new THREE.MeshLambertMaterial({ color: new THREE.Color(hex).lerp(new THREE.Color(0xffffff), 0.28), side: THREE.DoubleSide });
+      this._materialesHover.set(hex, m);
+    }
+    return m;
+  }
+
   colorearPor(criterio) {
+    this._quitaHover();
     this.criterio = criterio;
     this._calculaLeyenda();
     for (const m of this.mallas) if (!this.seleccion.has(m)) m.material = this._materialDe(m.userData.el);
     this.pedirRender();
   }
 
-  _etiquetaDeValor(valor) {
-    switch (this.criterio) {
+  _etiquetaDeValor(valor, criterio = this.criterio) {
+    switch (criterio) {
       case 'clase': return CLASES[valor] ?? valor;
       case 'tipo': return TIPOS[valor] ?? valor;
       case 'piso': return etiquetaDePiso(this.modelo, valor);
@@ -158,6 +175,7 @@ export class Visor {
   // ---------- Vistas (3D, planta por piso, alzado por eje) ----------
 
   _muestra(predicado) {
+    this._quitaHover();
     for (const m of this.mallas) m.visible = predicado(m.userData.el);
     const sel = new Set([...this.seleccion].filter((m) => m.visible));
     this._aplica(sel);
@@ -277,6 +295,7 @@ export class Visor {
   _aplica(nueva) {
     for (const m of this.seleccion) if (!nueva.has(m)) m.material = this._materialDe(m.userData.el);
     for (const m of nueva) m.material = this.mat.seleccion;
+    if (this._hover && !nueva.has(this._hover)) this._hover.material = this._materialHoverDe(this._hover.userData.el);
     this.seleccion = nueva;
     this.actualizaPanel();
     this.pedirRender();
@@ -296,6 +315,8 @@ export class Visor {
       inicio = { x: e.clientX, y: e.clientY, arrastra: false };
     });
     dom.addEventListener('pointermove', (e) => {
+      // Hover solo con el cursor libre: no mientras se arrastra una caja, se gira o se desplaza.
+      if (e.buttons === 0 && e.pointerType !== 'touch') this._pasaPor(e); else this._quitaHover();
       if (!inicio) return;
       if (Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > UMBRAL_CLIC_PX) inicio.arrastra = true;
       if (!inicio.arrastra) return;
@@ -317,16 +338,50 @@ export class Visor {
       if (arrastra) this._seleccionaCaja(desde, e, aditivo);
       else this._seleccionaClic(e, aditivo);
     };
+    dom.addEventListener('pointerleave', () => this._quitaHover());
     dom.addEventListener('pointerup', termina);
     dom.addEventListener('pointercancel', (e) => { activos.delete(e.pointerId); cancela(); });
   }
 
-  _seleccionaClic(e, aditivo) {
+  // Malla visible más cercana bajo un punto de la ventana (px), o undefined.
+  _mallaBajo(x, y) {
     const r = this.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    const ndc = new THREE.Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
     const rayo = new THREE.Raycaster();
     rayo.setFromCamera(ndc, this.camara);
-    const golpe = rayo.intersectObjects(this.mallas.filter((m) => m.visible), false)[0]?.object;
+    return rayo.intersectObjects(this.mallas.filter((m) => m.visible), false)[0]?.object;
+  }
+
+  // Hover: como mucho una consulta por cuadro, con la última posición del cursor.
+  _pasaPor(e) {
+    this._ultimoPuntero = { x: e.clientX, y: e.clientY };
+    if (this._hoverPendiente) return;
+    this._hoverPendiente = true;
+    requestAnimationFrame(() => {
+      this._hoverPendiente = false;
+      const p = this._ultimoPuntero;
+      if (p) this._fijaHover(this._mallaBajo(p.x, p.y) ?? null);
+    });
+  }
+
+  _quitaHover() {
+    this._ultimoPuntero = null;
+    this._fijaHover(null);
+  }
+
+  // Lo seleccionado conserva el naranja de la selección; el hover solo toca lo que no está seleccionado.
+  _fijaHover(malla) {
+    if (malla === this._hover) return;
+    const previa = this._hover;
+    this._hover = malla;
+    if (previa && !this.seleccion.has(previa)) previa.material = this._materialDe(previa.userData.el);
+    if (malla && !this.seleccion.has(malla)) malla.material = this._materialHoverDe(malla.userData.el);
+    this.renderer.domElement.style.cursor = malla ? 'pointer' : '';
+    this.pedirRender();
+  }
+
+  _seleccionaClic(e, aditivo) {
+    const golpe = this._mallaBajo(e.clientX, e.clientY);
     if (!golpe) return; // clic en vacío no cambia la selección: se limpia con Esc
     const nueva = aditivo ? new Set(this.seleccion) : new Set();
     if (aditivo && nueva.has(golpe)) nueva.delete(golpe);
@@ -483,28 +538,49 @@ export class Visor {
   _panelVarios(elems) {
     const r = resumir(elems);
     const tipos = Object.entries(r.porTipo).map(([t, n]) => `${n} ${(TIPOS[t] ?? t).toLowerCase()}${n === 1 ? '' : 's'}`).join(' · ');
-    const filaDe = (e) => [
-      `${e.id} · ${etiquetaDePiso(this.modelo, e.piso)}`,
-      e.seccion ?? '—',
-      e.peso_kg === null || e.peso_kg === undefined ? '' : fmt(e.peso_kg),
-      e.volumen_m3 === null ? '—' : fmt(e.volumen_m3, 4),
-      e.i ? `${fmt(e.longitud_m)} m` : `${fmt(e.area_m2)} m²`,
-    ];
-    const cab = ['Elemento', 'Sección', 'Peso (kg)', 'Vol. (m³)', 'Geom.'];
-    const filas = elems.map(filaDe);
+    const criterio = this.agrupar;
+    const geom = (x) => [x.longitud_m > 0 ? `${fmt(x.longitud_m)} m` : '', x.area_m2 > 0 ? `${fmt(x.area_m2)} m²` : ''].filter(Boolean).join(' · ') || '—';
+    const peso = (x) => (x.volumen_acero_m3 > 0 ? fmt(x.peso_acero_kg) : '');
+    // Fila de un subtotal (grupo) o del total: rótulo, n.º de elementos, peso, volumen y geometría.
+    const filaResumen = (rotulo, x) => [rotulo, String(x.n), peso(x), fmt(volumenTotal_m3(x), 4), geom(x)];
+    let cab, filas, total;
+    if (criterio) {
+      cab = ['Grupo', 'Elem.', 'Peso (kg)', 'Vol. (m³)', 'Geom.'];
+      filas = agruparPor(elems, criterio, { pisos: this.modelo.pisos.map((p) => p.nombre) })
+        .map((g) => filaResumen(this._etiquetaDeValor(g.valor, criterio), g.resumen));
+      total = filaResumen('Total', r);
+    } else {
+      cab = ['Elemento', 'Sección', 'Peso (kg)', 'Vol. (m³)', 'Geom.'];
+      filas = elems.map((e) => [
+        `${e.id} · ${etiquetaDePiso(this.modelo, e.piso)}`,
+        e.seccion ?? '—',
+        e.peso_kg === null || e.peso_kg === undefined ? '' : fmt(e.peso_kg),
+        e.volumen_m3 === null ? '—' : fmt(e.volumen_m3, 4),
+        e.i ? `${fmt(e.longitud_m)} m` : `${fmt(e.area_m2)} m²`,
+      ]);
+      total = ['Total', `${r.n} elem.`, peso(r), fmt(volumenTotal_m3(r), 4), geom(r)];
+    }
+    const numerica = criterio ? 1 : 2; // primera columna con números (alineada a la derecha)
     const copiar = async () => {
-      const tsv = [cab, ...filas].map((f) => f.join('\t')).join('\n');
+      const tsv = [cab, ...filas, total].map((f) => f.join('\t')).join('\n');
       try { await navigator.clipboard.writeText(tsv); } catch { /* sin permiso de portapapeles */ }
     };
+    const agrupador = el('select', { 'aria-label': 'Agrupar por', class: 'agrupar' },
+      el('option', { value: '' }, 'Sin agrupar'),
+      CRITERIOS.map((c) => el('option', { value: c.id }, `Subtotales por ${c.etiqueta.toLowerCase()}`)));
+    agrupador.value = criterio;
+    agrupador.addEventListener('change', () => { this.agrupar = agrupador.value; this.actualizaPanel(); });
+    const celdas = (f) => f.map((c, k) => el('td', { class: k >= numerica ? 'num' : '' }, c));
     return el('div', {},
       el('h2', {}, `${r.n} elementos seleccionados`),
       el('p', { class: 'nota' }, tipos),
       this._bloqueCantidades(r),
       r.sinCantidad > 0 ? el('p', { class: 'aviso' }, `${r.sinCantidad} sin cantidades.`) : '',
-      el('div', { class: 'acciones' }, el('button', { class: 'btn sec', onclick: copiar }, 'Copiar tabla')),
-      el('div', { class: 'lista' }, el('table', {},
+      el('div', { class: 'acciones' }, agrupador, el('button', { class: 'btn sec', onclick: copiar }, 'Copiar tabla')),
+      el('div', { class: 'lista' }, el('table', { class: criterio ? 'grupos' : '' },
         el('thead', {}, el('tr', {}, cab.map((c) => el('th', {}, c)))),
-        el('tbody', {}, filas.slice(0, MAX_FILAS_LISTA).map((f) => el('tr', {}, f.map((c, k) => el('td', { class: k >= 2 ? 'num' : '' }, c))))))),
+        el('tbody', {}, filas.slice(0, MAX_FILAS_LISTA).map((f) => el('tr', {}, celdas(f)))),
+        el('tfoot', {}, el('tr', {}, celdas(total))))),
       filas.length > MAX_FILAS_LISTA ? el('p', { class: 'nota' }, `…y ${filas.length - MAX_FILAS_LISTA} más (usa "Copiar tabla" para todos).`) : '',
     );
   }
