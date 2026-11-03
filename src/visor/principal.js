@@ -2,7 +2,7 @@
 import { descifrarPaquete } from '../core/cripto.js';
 import { Visor } from './app.js';
 import { pisosConElementos, etiquetaEje } from '../core/vistas.js';
-import { etiquetaDePiso, etiquetaDeEje, sanearMeta } from '../core/gestor.js';
+import { etiquetaDePiso, etiquetaDeEje, sanearMeta, sanearNota } from '../core/gestor.js';
 import { CRITERIOS } from '../core/colores.js';
 
 const $ = (id) => document.getElementById(id);
@@ -40,7 +40,7 @@ function abrir(paquete) {
   $('titulo').textContent = paquete.nombre;
 
   const visor = new Visor({ contenedor: $('lienzo'), panel: $('panel'), cajaSeleccion: $('caja'), leyenda: $('leyenda') });
-  visor.notaPaquete = typeof paquete.nota === 'string' ? paquete.nota : '';
+  visor.notaPaquete = sanearNota(paquete.nota);
   for (const m of paquete.modelos) m.meta = sanearMeta(m.meta); // paquetes anteriores: sin meta
   const selPlanta = $('sel-planta'), selAlzado = $('sel-alzado'), btn3d = $('btn-3d'), selColor = $('sel-color');
   selColor.replaceChildren(...CRITERIOS.map((c) => new Option(`Color: ${c.etiqueta}`, c.id)));

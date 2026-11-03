@@ -74,10 +74,13 @@ export function renombrarPaquete(paquete, nombre) {
   return { ...paquete, nombre: limpia(nombre, LIMITES.nombre) };
 }
 
+// Texto de nota listo para mostrar: sin caracteres de control y con el largo máximo.
+export const sanearNota = (texto) => limpia(texto, LIMITES.nota, { saltos: true });
+
 // Nota general del paquete; vacía = sin nota.
 export function fijarNotaPaquete(paquete, texto) {
   const { nota: _anterior, ...resto } = paquete;
-  const nota = limpia(texto, LIMITES.nota, { saltos: true });
+  const nota = sanearNota(texto);
   return nota ? { ...resto, nota } : resto;
 }
 

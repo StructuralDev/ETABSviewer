@@ -119,11 +119,14 @@ function tarjeta(m, k) {
   bajar.disabled = k === paquete.modelos.length - 1;
   // Quitar pide una segunda pulsación para confirmar (sin cuadros de diálogo).
   const quitar = nodo('button', { type: 'button', class: 'btn sec chico peligro' }, 'Quitar');
+  const cabecera = nodo('div', { class: 'cabecera-modelo' }, nodo('span', { class: 'pos' }, `${k + 1}.`), nombre, subir, bajar, quitar);
+  const advertencia = nodo('p', { class: 'aviso' }, 'Quitarlo no lo retira de quien ya tiene la contraseña: la versión anterior sigue en el historial de git. Para retirarlo de verdad, genera identificador y contraseña nuevos.');
   let temporizador = null;
   quitar.addEventListener('click', () => {
     if (temporizador === null) {
       quitar.textContent = '¿Seguro?';
-      temporizador = setTimeout(() => { quitar.textContent = 'Quitar'; temporizador = null; }, 4000);
+      cabecera.after(advertencia);
+      temporizador = setTimeout(() => { quitar.textContent = 'Quitar'; advertencia.remove(); temporizador = null; }, 6000);
       return;
     }
     clearTimeout(temporizador);
@@ -156,7 +159,7 @@ function tarjeta(m, k) {
   const filasEjes = (m.ejes ?? []).map((e) => filaAlias(`Eje ${e.etiqueta} (${e.sistema})`, e.etiqueta, propio(meta.alias?.ejes, claveEje(e)) ?? '', LIMITES.aliasEje, (v) => setAlias(k, 'ejes', claveEje(e), v)));
 
   return nodo('div', { class: 'tarjeta-modelo' },
-    nodo('div', { class: 'cabecera-modelo' }, nodo('span', { class: 'pos' }, `${k + 1}.`), nombre, subir, bajar, quitar),
+    cabecera,
     nodo('p', { class: 'nota' }, `${r.n} elementos · acero ${fmtNum(r.peso_acero_kg, 1)} kg · concreto ${fmtNum(r.volumen_concreto_m3, 2)} m³`),
     r.sinCantidad ? nodo('p', { class: 'aviso' }, `${r.sinCantidad} elementos sin cantidades (falta la biblioteca de perfiles, la tabla de secciones o el espesor).`) : '',
     detalle(`${k}:presentacion`, 'Presentación para el cliente',
@@ -196,6 +199,7 @@ $('abrir').addEventListener('click', async () => {
     $('nombre').value = paquete.nombre;
     $('nota').value = paquete.nota ?? '';
     $('clave').value = clave; // por omisión se conserva la contraseña: el enlace del cliente sigue sirviendo
+    $('clave').type = 'password'; // la del cliente no debe quedar a la vista (pantalla compartida)
     $('nota-acceso').textContent = id
       ? 'Con el mismo identificador y la misma contraseña, el enlace del cliente sigue funcionando: solo reemplaza el archivo en models/. '
         + 'Si cambias alguno (botones "Nuevo" y "Generar"), el enlace o la contraseña anterior dejan de servir para esta versión; la versión anterior queda en el historial de git.'
@@ -240,7 +244,7 @@ $('agregar').addEventListener('click', async () => {
 
 // ---------- Acceso y generación ----------
 
-$('generar').addEventListener('click', () => { $('clave').value = generarContrasena(); });
+$('generar').addEventListener('click', () => { $('clave').type = 'text'; $('clave').value = generarContrasena(); });
 $('nuevo-id').addEventListener('click', () => { $('idp').value = generarIdPaquete(); });
 $('idp').value = generarIdPaquete();
 $('clave').value = generarContrasena();
