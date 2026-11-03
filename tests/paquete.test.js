@@ -1,5 +1,5 @@
 import { prueba, cerca, igual, lanza, leerFixture } from './lib.js';
-import { construirPaquete, sellarPaquete, generarIdPaquete, generarContrasena } from '../src/core/paquete.js';
+import { construirPaquete, construirModeloDeEntrada, sellarPaquete, generarIdPaquete, generarContrasena } from '../src/core/paquete.js';
 import { descifrarPaquete } from '../src/core/cripto.js';
 
 const e2k = await leerFixture('formato-real.e2k');
@@ -24,6 +24,11 @@ await prueba('errores del paquete nombran el modelo con problema', async () => {
   await lanza(() => construirPaquete('X', []), /al menos un modelo/);
   await lanza(() => construirPaquete('', [{ e2k }]), /nombre del paquete/);
   await lanza(() => construirPaquete('X', [{ nombre: 'Malo', e2k: 'basura' }]), /Malo:/);
+});
+
+await prueba('un modelo suelto lleva "Modelo n" por omisión y sus errores nombran el modelo', async () => {
+  igual(construirModeloDeEntrada({ e2k }, 2).nombre, 'Modelo 3');
+  await lanza(() => construirModeloDeEntrada({ nombre: 'Malo', e2k: 'basura' }, 0), /Malo:/);
 });
 
 await prueba('id y contraseña generados tienen el formato esperado', () => {

@@ -32,10 +32,13 @@
         <select id="sel-planta" aria-label="Planta"></select>
         <select id="sel-alzado" aria-label="Alzado"></select>
       </div>
+      <div class="grupo" role="group" aria-label="Color">
+        <select id="sel-color" aria-label="Color por"></select>
+      </div>
     </header>
     <nav id="pestanas" role="tablist" aria-label="Modelos" hidden></nav>
     <main>
-      <div id="lienzo"><div id="caja"></div></div>
+      <div id="lienzo"><div id="caja"></div><div id="leyenda" aria-label="Leyenda de colores" hidden></div></div>
       <div id="divisor" role="separator" aria-orientation="vertical" aria-label="Ancho del panel" title="Arrastra para cambiar el ancho del panel"></div>
       <aside id="panel" aria-live="polite"></aside>
     </main>

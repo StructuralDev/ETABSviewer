@@ -12,15 +12,36 @@
 <body>
   <div class="pagina">
     <img class="logo-conv" src="design/logo_alba.svg" alt="ALBA">
-    <h1>Convertidor de modelos ETABS</h1>
+    <h1>Convertidor y gestor de paquetes</h1>
     <p>Uso interno. Todo se procesa en este navegador: los archivos originales no se suben a ningún lado.</p>
+
+    <div class="bloque-form" id="bloque-abrir">
+      <h2>Abrir un paquete existente (opcional)</h2>
+      <p class="nota">Para renombrar, reordenar o quitar modelos, o cambiar etiquetas, colores y notas de un paquete ya publicado.
+        Elige su archivo <code>models/&lt;id&gt;.enc.json</code> y escribe su contraseña. Para crear uno nuevo, sáltate este paso.</p>
+      <div class="dos">
+        <div class="campo">
+          <label for="abrir-archivo">Paquete cifrado (.enc.json)</label>
+          <input id="abrir-archivo" type="file" accept=".json">
+        </div>
+        <div class="campo">
+          <label for="abrir-clave">Contraseña del paquete</label>
+          <input id="abrir-clave" type="password" autocomplete="off">
+        </div>
+      </div>
+      <button type="button" id="abrir" class="btn sec">Abrir paquete</button>
+    </div>
 
     <form id="forma" autocomplete="off">
       <div class="bloque-form">
         <h2>1. Paquete (cliente o proyecto)</h2>
         <div class="campo">
           <label for="nombre">Nombre que verá el cliente</label>
-          <input id="nombre" type="text" placeholder="Ej. Torre de apuntalamiento TPO" required>
+          <input id="nombre" type="text" placeholder="Ej. Torre de apuntalamiento TPO" maxlength="80" required>
+        </div>
+        <div class="campo">
+          <label for="nota">Nota general para el cliente (opcional)</label>
+          <textarea id="nota" rows="3" maxlength="2000" placeholder="Ej. Alcance de la entrega, criterios, fecha de corte."></textarea>
         </div>
       </div>
 
@@ -35,12 +56,37 @@
 
       <div class="bloque-form">
         <h2>3. Modelos</h2>
-        <p class="nota">Por cada modelo: el <b>.e2k</b> (File → Export → ETABS .e2k File) y, solo si el modelo tiene perfiles que no están en
-          las bibliotecas (secciones propias o de otra norma), la tabla de propiedades de secciones de frame:
-          <b>Display → Show Tables → Model Definition → Section Properties → Frame Section Properties</b>
-          y luego <b>File → Export → Excel</b> (sirve el .xlsx tal cual).</p>
-        <div id="modelos"></div>
-        <button type="button" id="agregar" class="btn sec">Agregar otro modelo</button>
+        <div id="lista-modelos"></div>
+        <p class="nota" id="sin-modelos">Aún no hay modelos. Agrega el primero abajo.</p>
+
+        <div class="modelo" id="nuevo">
+          <h3>Agregar un modelo</h3>
+          <p class="nota">El <b>.e2k</b> (File → Export → ETABS .e2k File) y, solo si el modelo tiene perfiles que no están en
+            las bibliotecas (secciones propias o de otra norma), la tabla de propiedades de secciones de frame:
+            <b>Display → Show Tables → Model Definition → Section Properties → Frame Section Properties</b>
+            y luego <b>File → Export → Excel</b> (sirve el .xlsx tal cual). El modelo nuevo se agrega al final.</p>
+          <div class="campo">
+            <label for="n-nombre">Nombre del modelo</label>
+            <input id="n-nombre" type="text" data-nombre placeholder="Ej. Torre A" maxlength="80">
+          </div>
+          <div class="campo">
+            <label for="n-e2k">Archivo .e2k</label>
+            <input id="n-e2k" type="file" accept=".e2k,.txt" data-e2k>
+          </div>
+          <div class="dos">
+            <div class="campo">
+              <label for="n-tabla">Tabla de secciones, .xlsx o .csv (opcional)</label>
+              <input id="n-tabla" type="file" accept=".xlsx,.csv,.txt,.tsv" data-tabla>
+            </div>
+            <div class="campo">
+              <label for="n-unidad">Unidad de la tabla (solo si no trae fila de unidades)</label>
+              <select id="n-unidad" data-unidad>
+                <option value="M">m</option><option value="CM">cm</option><option value="MM">mm</option><option value="IN">in</option><option value="FT">ft</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" id="agregar" class="btn sec">Agregar al paquete</button>
+        </div>
       </div>
 
       <div class="bloque-form">
@@ -48,7 +94,10 @@
         <div class="dos">
           <div class="campo">
             <label for="idp">Identificador del enlace</label>
-            <input id="idp" type="text" readonly>
+            <div class="fila-clave">
+              <input id="idp" type="text" readonly>
+              <button type="button" id="nuevo-id" class="btn sec">Nuevo</button>
+            </div>
           </div>
           <div class="campo">
             <label for="clave">Contraseña (mín. 14 caracteres)</label>
@@ -58,7 +107,7 @@
             </div>
           </div>
         </div>
-        <p class="nota">Usa una contraseña distinta por cliente. El repositorio es público: la contraseña es lo único que protege los modelos, así que debe ser larga. Compártela por un canal distinto al del enlace.</p>
+        <p class="nota" id="nota-acceso">Usa una contraseña distinta por cliente. El repositorio es público: la contraseña es lo único que protege los modelos, así que debe ser larga. Compártela por un canal distinto al del enlace.</p>
       </div>
 
       <button id="crear" class="btn" type="submit">Generar paquete cifrado</button>
