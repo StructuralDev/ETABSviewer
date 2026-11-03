@@ -127,7 +127,9 @@ def main(argv=None) -> int:
         print(f'Error: {e}', file=sys.stderr)
         return 1
     args.salida.parent.mkdir(parents=True, exist_ok=True)
-    args.salida.write_text(html, encoding='utf-8')
+    # Saltos de línea LF siempre: los hashes de la política de contenido se calcularon sobre ese texto.
+    with open(args.salida, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(html)
     print(f'Listo: {args.salida} ({len(html.encode("utf-8")) / 1024:.0f} KB)')
     return 0
 
