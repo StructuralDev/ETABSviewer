@@ -20,6 +20,7 @@ Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archiv
 
 | Acción | Cómo |
 |---|---|
+| Ver qué elemento tocas | Pasar el cursor: el elemento se aclara un poco (no hay hover en pantalla táctil ni mientras arrastras) |
 | Seleccionar un elemento | Clic (un clic en vacío no cambia la selección) |
 | Caja **izquierda → derecha** (azul, continua) | Selecciona solo lo que queda **completamente** dentro, como en CAD |
 | Caja **derecha → izquierda** (verde, punteada) | Selecciona todo lo que la **toque**, aunque sea en parte |
@@ -29,6 +30,8 @@ Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archiv
 | Desplazar (pan) | Arrastrar con la rueda (botón central); también botón derecho |
 | Girar | Mayús + arrastrar con la rueda; en pantalla táctil, dos dedos |
 | Ancho del panel | Arrastrar el divisor entre la vista y el panel |
+
+**Tabla de elementos seleccionados.** Con dos o más elementos, el panel lista cada uno y deja siempre visible una fila de **Total** (n.º de elementos, peso de acero, volumen de todos los materiales, longitud y área). El selector sobre la tabla agrupa con **subtotales** por acero/concreto, tipo de elemento, sección, material de ETABS o piso; los subtotales suman exactamente el total. "Copiar tabla" copia lo que se ve, con el total, listo para pegar en Excel.
 
 **Varios modelos.** Si el paquete trae más de un modelo, aparecen **pestañas** bajo la barra superior. Un enlace puede abrir uno directamente con `&m=<n>` (0 es el primero; p. ej. `?c=<id>&m=1`). Cada cliente es un paquete distinto (otro enlace y otra contraseña).
 

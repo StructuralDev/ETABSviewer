@@ -101,6 +101,11 @@ th { position: sticky; top: 0; background: var(--side); color: var(--text2); fon
 td { padding: 5px 6px; border-top: 1px solid var(--hover); overflow-wrap: anywhere; }
 tbody tr:nth-child(even) { background: var(--alt); }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Con subtotales la 2.ª columna es el número de elementos: más angosta. */
+table.grupos th:nth-child(1) { width: 34%; } table.grupos th:nth-child(2) { width: 11%; } table.grupos th:nth-child(3) { width: 18%; } table.grupos th:nth-child(4) { width: 18%; } table.grupos th:nth-child(5) { width: 19%; }
+/* El total queda visible al final de la lista aunque haya que desplazarse. */
+tfoot td { position: sticky; bottom: 0; background: var(--side); font-weight: 600; border-top: 2px solid var(--border); }
+.acciones select.agrupar { width: auto; flex: 1; min-width: 0; }
 
 @media (max-width: 760px) {
   main { grid-template-columns: 1fr; grid-template-rows: 1fr 42%; }
