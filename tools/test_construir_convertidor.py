@@ -40,6 +40,15 @@ class PruebasConstruccion(unittest.TestCase):
         for texto in (self.texto_mapa, arranque, estilo):
             self.assertIn(sha256_csp(texto), self.csp)
 
+    def test_estilos_completos_y_sin_bom(self):
+        """Un BOM al inicio del CSS (alba-ds.css lo trae) hace que el navegador descarte el bloque :root con los colores."""
+        estilo = re.search(r'<style>(.*?)</style>', self.html, re.S).group(1)
+        self.assertNotIn('﻿', self.html)
+        self.assertTrue(estilo.lstrip().startswith('/*'))
+        for token in ('--alba-neutral-0:', '--alba-primary-300:', '--bg:', '--text:', '--font:'):
+            self.assertIn(token, estilo, f'falta {token} en los estilos incrustados')
+        self.assertNotIn('@import', estilo)
+
     def test_politica_bloquea_la_red(self):
         for directiva in ("default-src 'none'", "connect-src 'none'", "base-uri 'none'", "form-action 'none'"):
             self.assertIn(directiva, self.csp)

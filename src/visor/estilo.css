@@ -125,6 +125,7 @@ body { overflow-y: auto; }
 .modelo input[type=file] { color: var(--text2); font: 400 12px var(--font); width: 100%; }
 .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fila-clave { display: flex; gap: 8px; }
+.fila-clave .btn { flex: none; white-space: nowrap; }
 .pasos { color: var(--text2); margin: 0 0 16px; padding-left: 20px; }
 .pasos li { margin-bottom: 4px; }
 details.bloque-form > summary { font: 700 16px/1.2 var(--font); color: var(--text); cursor: pointer; }

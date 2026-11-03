@@ -54,7 +54,7 @@ def recolectar_modulos() -> dict:
         archivo = SRC / ruta
         if not archivo.is_file():
             raise ErrorConstruccion(f'No existe el módulo importado: src/{ruta}')
-        codigo = archivo.read_text(encoding='utf-8')
+        codigo = archivo.read_text(encoding='utf-8-sig')
 
         def reescribe(m, ruta=ruta):
             destino = posixpath.normpath(posixpath.join(posixpath.dirname(ruta), m.group(3)))
@@ -95,8 +95,8 @@ def construir(version=None):
     importmap = json.dumps({'imports': mapa}, separators=(',', ':'))
     arranque = f"import '{clave_modulo(ENTRADA)}';"
 
-    css_base = (RAIZ / 'design' / 'alba-ds.css').read_text(encoding='utf-8')
-    css_visor = (RAIZ / 'src' / 'visor' / 'estilo.css').read_text(encoding='utf-8')
+    css_base = (RAIZ / 'design' / 'alba-ds.css').read_text(encoding='utf-8-sig')
+    css_visor = (RAIZ / 'src' / 'visor' / 'estilo.css').read_text(encoding='utf-8-sig')
     css_visor = sustituir(css_visor, "@import url('../../design/alba-ds.css');", '')
     css = css_base + '\n' + css_visor
 
@@ -107,7 +107,7 @@ def construir(version=None):
            f"style-src {hash_csp(css)}; "
            "img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'")
 
-    html = (RAIZ / 'convertidor.html').read_text(encoding='utf-8')
+    html = (RAIZ / 'convertidor.html').read_text(encoding='utf-8-sig')
     html = re.sub(r'<meta http-equiv="Content-Security-Policy"[^>]*>', f'<meta http-equiv="Content-Security-Policy" content="{csp}">', html, count=1)
     html = sustituir(html, '<link rel="stylesheet" href="src/visor/estilo.css">', f'<style>{css}</style>')
     html = sustituir(html, 'src="design/logo_alba.svg"', f'src="{logo}"')
