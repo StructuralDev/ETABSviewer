@@ -47,7 +47,7 @@ Lo del proceso del equipo: push a `main`, `--force`, credenciales o datos de cli
 ## Particularidades
 
 - Formato `.e2k`: validado con un archivo de ETABS 23.3.2 solo en frames (ELEV, un LINEASSIGN por piso, secciones de catálogo sin dimensiones). Las ÁREAS (`AREA CONNECTIVITIES`, muros, losas) siguen siendo supuestas hasta probar un modelo que las incluya.
-- El área de sección del acero de catálogo viene de la biblioteca de perfiles de ETABS (`Property Libraries\AISCxx.xml`, nombre en `FILE` del .e2k) o, si no, de la tabla "Frame Section Properties"; sin alguna de las dos no hay peso. Las bibliotecas no se versionan (se guardan en el navegador del convertidor).
+- El área de sección del acero de catálogo viene de la biblioteca de perfiles de ETABS (`Property Libraries\AISCxx.xml`, nombre en `FILE` del .e2k) o, si no, de la tabla "Frame Section Properties"; sin alguna de las dos no hay peso. Las bibliotecas son de CSI: **nunca se versionan ni se publican** (el usuario elige la carpeta `Property Libraries` de su ETABS y se guardan en el navegador del convertidor). Si falta la biblioteca y no hay tabla, el convertidor no agrega el modelo.
 - Los archivos de la carpeta `docs/` (modelos de ejemplo) no se versionan.
 - Sin Node local: las pruebas se corren en `tests/index.html` (navegador); `node --test tests/` corre en CI.
 - El peso de acero se calcula como área de sección × longitud × peso volumétrico del material del propio modelo.

@@ -44,3 +44,6 @@ models/prueba-local.enc.json
 
 # Modelos y bibliotecas de ejemplo del equipo (datos de proyectos, no se versionan)
 docs/
+
+# Bibliotecas de perfiles de CSI: no se redistribuyen (el convertidor las lee de la instalación de ETABS)
+data/
