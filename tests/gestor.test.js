@@ -73,6 +73,13 @@ await prueba('un alias de piso cambia el texto mostrado sin tocar las elevacione
   igual(etiquetaDePiso(p.modelos[1], 'N1'), 'N1'); // los otros modelos no cambian
 });
 
+await prueba('un piso o eje con nombre de propiedad de Object ("constructor") no trae basura', () => {
+  const m = fijarMeta(base(), 0, { alias: { pisos: { N1: 'Nivel 1' } } }).modelos[0];
+  igual(etiquetaDePiso(m, 'constructor'), 'constructor');
+  igual(etiquetaDePiso(m, 'toString'), 'toString');
+  igual(etiquetaDeEje(m, { sistema: 'G1', dir: 'X', etiqueta: '__proto__' }), '__proto__');
+});
+
 await prueba('un modelo anterior, sin meta, sigue funcionando', () => {
   const m = base().modelos[0];
   igual(etiquetaDePiso(m, 'N1'), 'N1');

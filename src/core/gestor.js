@@ -123,6 +123,7 @@ export function validarPaquete(paquete) {
   if (!Array.isArray(paquete.modelos) || paquete.modelos.length === 0) throw new ErrorGestor('El paquete debe tener al menos un modelo.');
   paquete.modelos.forEach((m, k) => {
     if (!String(m?.nombre ?? '').trim()) throw new ErrorGestor(`El modelo ${k + 1} no tiene nombre.`);
+    if (!Array.isArray(m.frames) || !Array.isArray(m.areas)) throw new ErrorGestor(`El modelo ${k + 1} no tiene el formato esperado.`);
   });
   return paquete;
 }
@@ -131,5 +132,8 @@ export function validarPaquete(paquete) {
 
 export const claveEje = (eje) => `${eje.sistema}|${eje.dir}|${eje.etiqueta}`;
 
-export const etiquetaDePiso = (modelo, piso) => modelo.meta?.alias?.pisos?.[piso] ?? piso;
-export const etiquetaDeEje = (modelo, eje) => modelo.meta?.alias?.ejes?.[claveEje(eje)] ?? eje.etiqueta;
+// Lee solo claves propias: un piso llamado "constructor" no debe traer el de Object.prototype.
+export const propio = (mapa, clave) => (mapa && Object.hasOwn(mapa, clave) ? mapa[clave] : undefined);
+
+export const etiquetaDePiso = (modelo, piso) => propio(modelo.meta?.alias?.pisos, piso) ?? piso;
+export const etiquetaDeEje = (modelo, eje) => propio(modelo.meta?.alias?.ejes, claveEje(eje)) ?? eje.etiqueta;

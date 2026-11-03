@@ -40,7 +40,9 @@ export function valorDeColor(e, criterio) {
  * @param {Object<string,string>} [base] colores de partida por valor (los del visor para "clase")
  * @returns {Array<{valor:string, color:string, n:number, propio:boolean}>}
  */
-export function leyenda(modelo, criterio, propios = {}, base = {}) {
+export function leyenda(modelo, criterio, propios, base) {
+  propios ??= {};
+  base ??= {};
   const cuenta = new Map();
   for (const e of [...modelo.frames, ...modelo.areas]) {
     const v = valorDeColor(e, criterio);
@@ -53,13 +55,15 @@ export function leyenda(modelo, criterio, propios = {}, base = {}) {
   } else {
     valores.sort(ordenNatural.compare);
   }
+  // Claves propias solamente: una sección llamada "constructor" no debe traer algo de Object.prototype.
+  const de = (mapa, valor) => (Object.hasOwn(mapa, valor) ? mapa[valor] : undefined);
   return valores.map((valor, k) => {
-    const propio = COLOR_HEX.test(propios[valor] ?? '');
+    const elegido = COLOR_HEX.test(de(propios, valor) ?? '');
     return {
       valor,
-      color: propio ? propios[valor] : (base[valor] ?? PALETA[k % PALETA.length]),
+      color: elegido ? propios[valor] : (de(base, valor) ?? PALETA[k % PALETA.length]),
       n: cuenta.get(valor),
-      propio,
+      propio: elegido,
     };
   });
 }

@@ -18,19 +18,25 @@ export class ErrorPaquete extends Error {}
 export function construirPaquete(nombre, entradas, bibliotecas = {}) {
   if (!String(nombre ?? '').trim()) throw new ErrorPaquete('Falta el nombre del paquete.');
   if (!Array.isArray(entradas) || entradas.length === 0) throw new ErrorPaquete('Agrega al menos un modelo.');
-  const modelos = entradas.map((en, k) => {
-    const etiqueta = en.nombre?.trim() || `Modelo ${k + 1}`;
-    try {
-      const unidad = en.unidadTabla ?? 'M';
-      const tablaSecciones = en.hojasTabla
-        ? parsearTablaDeHojas(en.hojasTabla, unidad)
-        : en.tabla ? parsearTablaSecciones(en.tabla, unidad) : undefined;
-      return construirModelo(parsearE2k(en.e2k), { nombre: etiqueta, tablaSecciones, bibliotecas });
-    } catch (e) {
-      throw new ErrorPaquete(`${etiqueta}: ${e.message}`);
-    }
-  });
+  const modelos = entradas.map((en, k) => construirModeloDeEntrada(en, k, bibliotecas));
   return { nombre: nombre.trim(), modelos };
+}
+
+/**
+ * Construye un solo modelo a partir de sus archivos (mismas entradas que construirPaquete).
+ * @param {number} k posición del modelo en el paquete; solo se usa para el nombre por omisión ("Modelo k+1")
+ */
+export function construirModeloDeEntrada(en, k, bibliotecas = {}) {
+  const etiqueta = en.nombre?.trim() || `Modelo ${k + 1}`;
+  try {
+    const unidad = en.unidadTabla ?? 'M';
+    const tablaSecciones = en.hojasTabla
+      ? parsearTablaDeHojas(en.hojasTabla, unidad)
+      : en.tabla ? parsearTablaSecciones(en.tabla, unidad) : undefined;
+    return construirModelo(parsearE2k(en.e2k), { nombre: etiqueta, tablaSecciones, bibliotecas });
+  } catch (e) {
+    throw new ErrorPaquete(`${etiqueta}: ${e.message}`);
+  }
 }
 
 // Devuelve el sobre cifrado listo para guardarse como models/<id>.enc.json.

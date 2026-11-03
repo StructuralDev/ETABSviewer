@@ -55,6 +55,11 @@ await prueba('con más categorías que colores la paleta se repite', () => {
   igual(l[8].color, PALETA[0]); // S9 es la novena: 9 mod 8 = índice 0
 });
 
+await prueba('una sección llamada "constructor" recibe un color de la paleta', () => {
+  const m = { pisos: [], areas: [], frames: [{ clase: 'acero', seccion: 'constructor' }, { clase: 'acero', seccion: 'toString' }] };
+  igual(leyenda(m, 'seccion').map((x) => x.color), [PALETA[0], PALETA[1]]); // orden: constructor, toString
+});
+
 await prueba('sin dato se agrupa como "—" y un criterio desconocido falla', async () => {
   igual(valorDeColor({ clase: 'acero' }, 'seccion'), '—');
   await lanza(() => valorDeColor({}, 'color'), /desconocido/);

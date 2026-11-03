@@ -32,6 +32,8 @@ Unidades de salida: m, m², m³, kg (se convierten desde las unidades del archiv
 
 **Varios modelos.** Si el paquete trae más de un modelo, aparecen **pestañas** bajo la barra superior. Un enlace puede abrir uno directamente con `&m=<n>` (0 es el primero; p. ej. `?c=<id>&m=1`). Cada cliente es un paquete distinto (otro enlace y otra contraseña).
 
+**Color por** (barra superior): acero / concreto (por omisión), tipo de elemento, sección, material de ETABS o piso. La leyenda aparece abajo a la izquierda de la vista y la selección se resalta siempre en naranja. Quien prepara el paquete puede fijar el color inicial de cada modelo, colores propios, etiquetas para pisos y ejes y notas para el cliente (ver el gestor, más abajo).
+
 **Vistas** (barra superior): `3D`; `Planta` (elige un piso: muestra los objetos asignados a ese piso, vista cenital con el norte, +Y, arriba); `Alzado` (elige un eje de la cuadrícula de ETABS: muestra los objetos contenidos en su plano, mirando desde −Y para ejes numéricos y desde +X para ejes con letra). Planta y alzado usan cámara ortográfica y dibujan los ejes con sus burbujas.
 
 Despliegue y seguridad: ver [DESPLIEGUE.md](DESPLIEGUE.md).
@@ -43,6 +45,16 @@ Despliegue y seguridad: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 3. Se descarga `<identificador>.enc.json`. Cópialo a `models/` y súbelo por pull request.
 4. El enlace es `https://structuraldev.github.io/ETABSviewer/?c=<identificador>`.
 5. En Google Sites: `Insertar → Incrustar → Por URL` y pega ese enlace. Comparte la contraseña por otro canal.
+
+### Gestor: editar un paquete ya publicado
+
+En el mismo convertidor, el bloque **Abrir un paquete existente** recibe el `models/<id>.enc.json` y su contraseña. Desde ahí puedes, sin volver a los `.e2k` originales:
+
+- renombrar el paquete y cada modelo, **reordenar** (↑ ↓), **quitar** (se pide confirmar con una segunda pulsación) y **agregar** modelos nuevos desde un `.e2k` (van al final);
+- por modelo, en *Presentación para el cliente*: **nota** (se ve en el panel cuando no hay selección), **color inicial** (por tipo, sección, material, piso o acero/concreto), **colores propios** por categoría y **etiquetas** para pisos y ejes (solo cambian el texto mostrado; geometría y elevaciones no se tocan; las de ejes admiten hasta 6 caracteres);
+- una **nota general** del paquete.
+
+Al abrir, el identificador y la contraseña se conservan: si generas con ambos iguales y reemplazas el archivo en `models/`, el enlace del cliente sigue funcionando. Con **Nuevo** (identificador) o **Generar** (contraseña) el enlace o la clave anteriores dejan de servir para esta versión; la versión previa queda en el historial de git, así que para retirar un acceso hay que crear un paquete nuevo. Los paquetes anteriores a esta función se abren igual: la presentación es opcional.
 
 **Seguridad.** El repositorio de GitHub Pages gratuito es público. Los modelos se publican solo cifrados (AES-256-GCM, clave derivada con PBKDF2-SHA256, 600 000 iteraciones); sin la contraseña el archivo no se puede leer, aunque alguien conozca el enlace. Una contraseña débil se puede adivinar por fuerza bruta fuera de línea: usa la generada (o una frase larga) y una distinta por cliente. Nunca subas `.e2k`, `.edb`, tablas ni contraseñas al repositorio.
 
