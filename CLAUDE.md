@@ -10,7 +10,7 @@ HTML autocontenido / sitio estático (JavaScript ES modules, sin build) publicad
 - Ejecutar: `python -m http.server 8000 --bind 127.0.0.1` en la raíz y abrir `http://localhost:8000/` (los módulos ES no cargan desde `file://`).
 - Pruebas: `node --test tests/` (requiere Node.js 20+, sin dependencias).
 - Lint/formato: no aplica por ahora.
-- Build: no hay.
+- Build: no hay para el sitio. Solo el convertidor autónomo para compartir: `python tools/construir_convertidor.py` → `dist/convertidor-autonomo.html` (no se versiona; pruebas: `python -m unittest discover -s tools -p "test_*.py"`).
 
 ## Verificaciones automáticas
 
@@ -33,6 +33,7 @@ Ver el proceso del equipo (`/plan`, `/implementar`, `/revisar`, `/pr`). Ramas `<
 - `src/core/` — `unidades.js`, `e2k.js`, `biblioteca.js`, `tabla.js`, `xlsx.js`, `vistas.js`, `caja.js`, `modelo.js`, `resumen.js`, `colores.js`, `gestor.js`, `cripto.js`, `paquete.js`.
 - `src/visor/`, `src/convertidor/` — interfaz (DOM y three.js).
 - `models/` — `<id>.enc.json`: un paquete cifrado (AES-GCM) por cliente; el id va en la URL (`?c=<id>`). No hay índice público.
+- `tools/` — `construir_convertidor.py` (junta el convertidor en un solo HTML sin red) y sus pruebas.
 - `design/` — tokens ALBA-ds (copia de la plantilla web del plugin).
 
 ## Seguridad de los modelos

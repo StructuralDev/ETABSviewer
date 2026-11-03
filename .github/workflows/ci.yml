@@ -29,3 +29,7 @@ jobs:
           node-version: 20
       - name: Pruebas (sin dependencias)
         run: node --test tests/
+      - name: Convertidor autónomo (pruebas y construcción)
+        run: |
+          python3 -m unittest discover -s tools -p "test_*.py" -v
+          python3 tools/construir_convertidor.py

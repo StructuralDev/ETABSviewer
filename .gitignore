@@ -47,3 +47,7 @@ docs/
 
 # Bibliotecas de perfiles de CSI: no se redistribuyen (el convertidor las lee de la instalación de ETABS)
 data/
+
+# Convertidor autónomo generado por tools/construir_convertidor.py (se comparte aparte, no se versiona)
+dist/
+__pycache__/

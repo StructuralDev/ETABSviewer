@@ -251,6 +251,10 @@ $('agregar').addEventListener('click', async () => {
 
 // ---------- Acceso y generación ----------
 
+async function copiarTexto(texto) {
+  try { await navigator.clipboard.writeText(texto); } catch { /* sin permiso de portapapeles: se puede copiar a mano */ }
+}
+$('copiar-clave').addEventListener('click', () => copiarTexto($('clave').value));
 $('generar').addEventListener('click', () => { $('clave').type = 'text'; $('clave').value = generarContrasena(); });
 $('nuevo-id').addEventListener('click', () => { $('idp').value = generarIdPaquete(); });
 $('idp').value = generarIdPaquete();
@@ -263,7 +267,8 @@ $('forma').addEventListener('submit', async (ev) => {
   $('crear').disabled = true;
   try {
     const final = validarPaquete(renombrarPaquete(fijarNotaPaquete(paquete, $('nota').value), $('nombre').value));
-    const sobre = await sellarPaquete(final, $('clave').value);
+    const clave = $('clave').value;
+    const sobre = await sellarPaquete(final, clave);
     const archivo = `${$('idp').value}.enc.json`;
     descargar(archivo, sobre);
 
@@ -278,8 +283,15 @@ $('forma').addEventListener('submit', async (ev) => {
           nodo('div', { class: 'fila' }, nodo('span', { class: 'k' }, 'Concreto'), nodo('span', { class: 'v' }, `${fmtNum(r.volumen_concreto_m3, 2)} m³`)),
           r.sinCantidad ? nodo('p', { class: 'aviso' }, `${r.sinCantidad} elementos sin cantidades (falta la biblioteca de perfiles, la tabla de secciones o el espesor).`) : '');
       }),
-      nodo('p', { class: 'nota' }, 'Pasos: 1) copia el archivo descargado a la carpeta ', nodo('code', {}, 'models/'),
-        ' del repositorio (si ya existía, se reemplaza) · 2) súbelo con un pull request · 3) el enlace queda así:'),
+      nodo('p', {}, 'Archivo descargado: ', nodo('code', {}, archivo)),
+      // La contraseña solo se muestra si es la generada aquí; la de un paquete abierto ya la conoce quien lo abrió.
+      $('clave').type === 'text'
+        ? nodo('p', {}, 'Contraseña: ', nodo('code', {}, clave), ' ',
+          nodo('button', { type: 'button', class: 'btn sec chico', onclick: () => copiarTexto(clave) }, 'Copiar'))
+        : '',
+      nodo('p', { class: 'nota' }, 'Quien convierte: envía el archivo a quien lo publica y la contraseña por otro canal (no en el mismo mensaje).'),
+      nodo('p', { class: 'nota' }, 'Quien publica: copia el archivo a la carpeta ', nodo('code', {}, 'models/'),
+        ' del repositorio (si ya existía, se reemplaza), súbelo con un pull request y el enlace queda así:'),
       nodo('p', {}, nodo('code', {}, `https://structuraldev.github.io/ETABSviewer/?c=${$('idp').value}`)),
       nodo('p', { class: 'nota' }, 'Comprueba los totales contra el Material Takeoff de ETABS antes de compartir. No guardes la contraseña en el repositorio.'),
     );
