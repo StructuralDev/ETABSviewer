@@ -6,8 +6,11 @@ import { resumir } from '../core/resumen.js';
 import { M2_A_CM2 } from '../core/unidades.js';
 import { elementosDePiso, elementosDeEje, azimutAlzado } from '../core/vistas.js';
 import { normalizaRect, modoDeCaja, puntoEnRect, puntosDentro, segmentoTocaRect, poligonoTocaRect } from '../core/caja.js';
+import { leyenda, valorDeColor } from '../core/colores.js';
+import { etiquetaDePiso, etiquetaDeEje } from '../core/gestor.js';
 
 const TIPOS = { viga: 'Viga', columna: 'Columna', contraviento: 'Contraviento', losa: 'Losa', muro: 'Muro', rampa: 'Rampa' };
+const CLASES = { acero: 'Acero', concreto: 'Concreto', otro: 'Otro' };
 const MAX_FILAS_LISTA = 500;
 const UMBRAL_CLIC_PX = 5;
 
@@ -30,13 +33,17 @@ const colorToken = (nombre) =>
   new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue(nombre).trim());
 
 export class Visor {
-  constructor({ contenedor, panel, cajaSeleccion }) {
+  constructor({ contenedor, panel, cajaSeleccion, leyenda: leyendaEl }) {
     this.contenedor = contenedor;
     this.panel = panel;
     this.cajaEl = cajaSeleccion;
+    this.leyendaEl = leyendaEl;
     this.modelo = null;
+    this.notaPaquete = ''; // nota general del paquete (la fija quien abre el visor)
+    this.criterio = 'clase'; // criterio de "Color por" vigente
     this.seleccion = new Set();
     this._pendiente = false;
+    this._materiales = new Map(); // "#rrggbb" -> material
 
     this.escena = new THREE.Scene();
     this.escena.background = colorToken('--alba-fondo-marco');
@@ -52,10 +59,13 @@ export class Visor {
     sol.position.set(0.5, 1, 0.8);
     this.escena.add(sol);
 
+    // Colores de partida de "Acero / concreto"; el resto de los criterios usa la paleta de colores.js.
+    this.coloresClase = {
+      acero: `#${colorToken('--alba-primary-300').getHexString()}`,
+      concreto: `#${colorToken('--alba-neutral-300').getHexString()}`,
+      otro: `#${colorToken('--alba-neutral-500').getHexString()}`,
+    };
     this.mat = {
-      acero: new THREE.MeshLambertMaterial({ color: colorToken('--alba-primary-300') }),
-      concreto: new THREE.MeshLambertMaterial({ color: colorToken('--alba-neutral-300'), side: THREE.DoubleSide }),
-      otro: new THREE.MeshLambertMaterial({ color: colorToken('--alba-neutral-500'), side: THREE.DoubleSide }),
       seleccion: new THREE.MeshLambertMaterial({ color: colorToken('--alba-warning-500'), side: THREE.DoubleSide }),
     };
 
@@ -79,16 +89,63 @@ export class Visor {
     }
     this.modelo = modelo;
     this.seleccion.clear();
+    this.criterio = modelo.meta?.colorPor ?? 'clase';
+    this._calculaLeyenda();
     this.grupo = new THREE.Group();
     this.mallas = [];
     for (const f of modelo.frames) {
-      this._agrega(new THREE.Mesh(geometriaFrame(f, modelo.secciones[f.seccion]), this.mat[f.clase] ?? this.mat.otro), f);
+      this._agrega(new THREE.Mesh(geometriaFrame(f, modelo.secciones[f.seccion]), this._materialDe(f)), f);
     }
     for (const a of modelo.areas) {
-      this._agrega(new THREE.Mesh(geometriaArea(a), this.mat[a.clase] ?? this.mat.otro), a);
+      this._agrega(new THREE.Mesh(geometriaArea(a), this._materialDe(a)), a);
     }
     this.escena.add(this.grupo);
     this.vista3d();
+  }
+
+  // ---------- Color por categoría ----------
+
+  // Leyenda del criterio vigente: colores propios del modelo (meta.colores) sobre los automáticos.
+  _calculaLeyenda() {
+    this.leyenda = leyenda(this.modelo, this.criterio, this.modelo.meta?.colores?.[this.criterio], this.criterio === 'clase' ? this.coloresClase : {});
+    this._colorDe = new Map(this.leyenda.map((x) => [x.valor, x.color]));
+    this._pintaLeyenda();
+  }
+
+  _materialDe(e) {
+    const hex = this._colorDe.get(valorDeColor(e, this.criterio));
+    let m = this._materiales.get(hex);
+    if (!m) {
+      m = new THREE.MeshLambertMaterial({ color: new THREE.Color(hex), side: THREE.DoubleSide });
+      this._materiales.set(hex, m);
+    }
+    return m;
+  }
+
+  colorearPor(criterio) {
+    this.criterio = criterio;
+    this._calculaLeyenda();
+    for (const m of this.mallas) if (!this.seleccion.has(m)) m.material = this._materialDe(m.userData.el);
+    this.pedirRender();
+  }
+
+  _etiquetaDeValor(valor) {
+    switch (this.criterio) {
+      case 'clase': return CLASES[valor] ?? valor;
+      case 'tipo': return TIPOS[valor] ?? valor;
+      case 'piso': return etiquetaDePiso(this.modelo, valor);
+      default: return valor;
+    }
+  }
+
+  _pintaLeyenda() {
+    if (!this.leyendaEl) return;
+    this.leyendaEl.replaceChildren(...this.leyenda.map((x) => {
+      const muestra = el('span', { class: 'muestra' });
+      muestra.style.background = x.color; // CSSOM: permitido por la CSP (no es un atributo style en el HTML)
+      return el('div', { class: 'item-leyenda' }, muestra, el('span', { class: 'texto' }, this._etiquetaDeValor(x.valor)), el('span', { class: 'n' }, String(x.n)));
+    }));
+    this.leyendaEl.hidden = this.leyenda.length === 0;
   }
 
   _agrega(malla, elemento) {
@@ -179,7 +236,7 @@ export class Visor {
         a = [mn[0] - margen, g.coord_m, zBase]; b = [mx[0] + margen, g.coord_m, zBase];
       }
       pos.push(...aThree(...a), ...aThree(...b));
-      this.ejesGrupo.add(this._burbuja(g.etiqueta, aThree(...(modo === 'alzado' ? b : a)), color, opacidad));
+      this.ejesGrupo.add(this._burbuja(etiquetaDeEje(this.modelo, g), aThree(...(modo === 'alzado' ? b : a)), color, opacidad));
     }
     const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     this.ejesGrupo.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: modo === '3d' ? 0.3 : 0.7 })));
@@ -198,10 +255,11 @@ export class Visor {
     g.fill();
     g.stroke();
     g.fillStyle = '#F8F8FE';
-    g.font = `600 ${texto.length > 2 ? 20 : 28}px Inter, "Segoe UI", sans-serif`;
+    // Etiquetas de hasta 6 caracteres (alias): la fuente baja con la longitud y el texto nunca pasa del círculo.
+    g.font = `600 ${texto.length > 2 ? Math.min(20, Math.floor(87 / texto.length)) : 28}px Inter, "Segoe UI", sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(texto, 32, 33);
+    g.fillText(texto, 32, 33, 50);
     const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, sizeAttenuation: false, transparent: true, opacity: opacidad });
     const sp = new THREE.Sprite(mat);
     sp.scale.setScalar(0.045);
@@ -217,7 +275,7 @@ export class Visor {
   }
 
   _aplica(nueva) {
-    for (const m of this.seleccion) if (!nueva.has(m)) m.material = this.mat[m.userData.el.clase] ?? this.mat.otro;
+    for (const m of this.seleccion) if (!nueva.has(m)) m.material = this._materialDe(m.userData.el);
     for (const m of nueva) m.material = this.mat.seleccion;
     this.seleccion = nueva;
     this.actualizaPanel();
@@ -370,11 +428,14 @@ export class Visor {
     const r = resumir(todos);
     const tipos = Object.entries(r.porTipo).map(([t, n]) => `${n} ${(TIPOS[t] ?? t).toLowerCase()}${n === 1 ? '' : 's'}`).join(' · ');
     const avisos = this.modelo.avisos ?? [];
+    const notaModelo = this.modelo.meta?.nota;
     return el('div', {},
       el('h2', {}, this.modelo.nombre),
+      notaModelo ? el('p', { class: 'texto-cliente' }, notaModelo) : '',
       el('p', { class: 'nota' }, `${r.n} elementos: ${tipos}`),
       this._bloqueCantidades(r),
       r.sinCantidad > 0 ? el('p', { class: 'aviso' }, `${r.sinCantidad} elementos sin cantidades (sin área de sección o espesor).`) : '',
+      this.notaPaquete ? el('div', {}, el('h3', {}, 'Nota general'), el('p', { class: 'texto-cliente' }, this.notaPaquete)) : '',
       el('p', { class: 'nota' }, 'Clic: selecciona. Caja de izquierda a derecha: solo lo que quede completo dentro; de derecha a izquierda: todo lo que toque. Ctrl o Mayús suma · Esc limpia la selección. Rueda: zoom · arrastrar con la rueda: desplazar · Mayús + arrastrar con la rueda: girar.'),
       avisos.length ? el('details', {}, el('summary', {}, `Notas del modelo (${avisos.length})`), el('ul', {}, avisos.map((a) => el('li', {}, a)))) : '',
     );
@@ -386,7 +447,7 @@ export class Visor {
     const pt = (p) => p.map((c) => fmt(c, 3)).join(', ');
     const filas = [
       this._fila('Tipo', TIPOS[e.tipo] ?? e.tipo),
-      this._fila('Piso', e.piso),
+      this._fila('Piso', etiquetaDePiso(this.modelo, e.piso)),
       this._fila('Sección', e.seccion ?? '—'),
       this._fila('Material', e.material ?? '—'),
     ];
@@ -423,7 +484,7 @@ export class Visor {
     const r = resumir(elems);
     const tipos = Object.entries(r.porTipo).map(([t, n]) => `${n} ${(TIPOS[t] ?? t).toLowerCase()}${n === 1 ? '' : 's'}`).join(' · ');
     const filaDe = (e) => [
-      `${e.id} · ${e.piso}`,
+      `${e.id} · ${etiquetaDePiso(this.modelo, e.piso)}`,
       e.seccion ?? '—',
       e.peso_kg === null || e.peso_kg === undefined ? '' : fmt(e.peso_kg),
       e.volumen_m3 === null ? '—' : fmt(e.volumen_m3, 4),

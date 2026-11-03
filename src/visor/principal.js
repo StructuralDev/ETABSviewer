@@ -2,6 +2,8 @@
 import { descifrarPaquete } from '../core/cripto.js';
 import { Visor } from './app.js';
 import { pisosConElementos, etiquetaEje } from '../core/vistas.js';
+import { etiquetaDePiso, etiquetaDeEje, sanearMeta, sanearNota } from '../core/gestor.js';
+import { CRITERIOS } from '../core/colores.js';
 
 const $ = (id) => document.getElementById(id);
 const ID_VALIDO = /^[A-Za-z0-9_-]{4,64}$/;
@@ -37,8 +39,12 @@ function abrir(paquete) {
   document.title = `${paquete.nombre} · Visor ETABS`;
   $('titulo').textContent = paquete.nombre;
 
-  const visor = new Visor({ contenedor: $('lienzo'), panel: $('panel'), cajaSeleccion: $('caja') });
-  const selPlanta = $('sel-planta'), selAlzado = $('sel-alzado'), btn3d = $('btn-3d');
+  const visor = new Visor({ contenedor: $('lienzo'), panel: $('panel'), cajaSeleccion: $('caja'), leyenda: $('leyenda') });
+  visor.notaPaquete = sanearNota(paquete.nota);
+  for (const m of paquete.modelos) m.meta = sanearMeta(m.meta); // paquetes anteriores: sin meta
+  const selPlanta = $('sel-planta'), selAlzado = $('sel-alzado'), btn3d = $('btn-3d'), selColor = $('sel-color');
+  selColor.replaceChildren(...CRITERIOS.map((c) => new Option(`Color: ${c.etiqueta}`, c.id)));
+  selColor.addEventListener('change', () => visor.colorearPor(selColor.value));
   const marca = (activo) => {
     btn3d.setAttribute('aria-pressed', String(activo === btn3d));
     for (const s of [selPlanta, selAlzado]) {
@@ -49,11 +55,11 @@ function abrir(paquete) {
   // Llena los selectores de planta (pisos) y alzado (ejes) con lo definido en el modelo de ETABS.
   const llenaVistas = (modelo) => {
     const pisos = pisosConElementos(modelo).reverse(); // de arriba hacia abajo, como ETABS
-    selPlanta.replaceChildren(new Option('Planta', ''), ...pisos.map((p) => new Option(p, p)));
+    selPlanta.replaceChildren(new Option('Planta', ''), ...pisos.map((p) => new Option(etiquetaDePiso(modelo, p), p)));
     selPlanta.hidden = pisos.length === 0;
     const ejes = modelo.ejes ?? [];
     const varios = new Set(ejes.map((e) => e.sistema)).size > 1;
-    selAlzado.replaceChildren(new Option('Alzado', ''), ...ejes.map((e, k) => new Option(etiquetaEje(e, varios), String(k))));
+    selAlzado.replaceChildren(new Option('Alzado', ''), ...ejes.map((e, k) => new Option(etiquetaEje({ ...e, etiqueta: etiquetaDeEje(modelo, e) }, varios), String(k))));
     selAlzado.hidden = ejes.length === 0;
     marca(btn3d);
   };
@@ -61,6 +67,7 @@ function abrir(paquete) {
   const cargar = (k) => {
     const modelo = paquete.modelos[k];
     visor.cargarModelo(modelo);
+    selColor.value = visor.criterio; // el modelo puede traer su propio color inicial
     llenaVistas(modelo);
   };
   btn3d.addEventListener('click', () => { visor.vista3d(); marca(btn3d); });

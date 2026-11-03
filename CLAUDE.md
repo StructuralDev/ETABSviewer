@@ -29,8 +29,8 @@ Ver el proceso del equipo (`/plan`, `/implementar`, `/revisar`, `/pr`). Ramas `<
 ## Estructura
 
 - `index.html` — visor (acceso con contraseña + vista 3D + panel de selección).
-- `convertidor.html` — herramienta interna: lee `.e2k`, calcula cantidades y genera el modelo cifrado.
-- `src/core/` — `unidades.js`, `e2k.js`, `biblioteca.js`, `tabla.js`, `xlsx.js`, `vistas.js`, `caja.js`, `modelo.js`, `resumen.js`, `cripto.js`, `paquete.js`.
+- `convertidor.html` — herramienta interna: lee `.e2k`, calcula cantidades y genera el modelo cifrado; también abre y edita un paquete existente (gestor: renombrar, reordenar, quitar, etiquetas, colores y notas).
+- `src/core/` — `unidades.js`, `e2k.js`, `biblioteca.js`, `tabla.js`, `xlsx.js`, `vistas.js`, `caja.js`, `modelo.js`, `resumen.js`, `colores.js`, `gestor.js`, `cripto.js`, `paquete.js`.
 - `src/visor/`, `src/convertidor/` — interfaz (DOM y three.js).
 - `models/` — `<id>.enc.json`: un paquete cifrado (AES-GCM) por cliente; el id va en la URL (`?c=<id>`). No hay índice público.
 - `design/` — tokens ALBA-ds (copia de la plantilla web del plugin).
